@@ -1,0 +1,99 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-neutral-light text-neutral-dark;
+  }
+
+  /* Ensure proper height on mobile browsers */
+  #root {
+    @apply min-h-screen;
+    min-height: -webkit-fill-available;
+  }
+}
+
+@layer components {
+  /* Primary button */
+  .btn-primary {
+    @apply px-6 py-3 bg-neutral-dark text-white font-semibold rounded-lg
+           transition-all duration-200 transform active:scale-[0.98]
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Secondary button */
+  .btn-secondary {
+    @apply px-6 py-3 border-2 border-neutral-dark text-neutral-dark font-semibold rounded-lg
+           transition-all duration-200 transform active:scale-[0.98]
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Team-colored buttons */
+  .btn-red {
+    @apply bg-red-primary text-white hover:bg-red-secondary;
+  }
+
+  .btn-blue {
+    @apply bg-blue-primary text-white hover:bg-blue-secondary;
+  }
+
+  /* Role card with thick border */
+  .role-card {
+    @apply relative p-4 rounded-lg;
+  }
+
+  .role-card-red {
+    @apply border-8 border-red-primary bg-red-background;
+  }
+
+  .role-card-blue {
+    @apply border-8 border-blue-primary bg-blue-background;
+  }
+
+  /* Input styles */
+  .input-field {
+    @apply w-full px-4 py-3 border-2 border-neutral-medium rounded-lg
+           focus:outline-none focus:border-neutral-dark transition-colors;
+  }
+
+  /* Code input boxes */
+  .code-input {
+    @apply w-12 h-12 text-center text-xl font-bold border-2 border-neutral-medium rounded
+           focus:outline-none focus:border-neutral-dark;
+  }
+}
+
+@layer utilities {
+  /* Safe area padding for mobile devices */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Rotation prompt for landscape */
+  @media (orientation: landscape) and (max-width: 1024px) {
+    .portrait-only::before {
+      @apply fixed inset-0 bg-white z-50 flex items-center justify-center;
+      content: 'Please rotate your device to portrait mode 📱';
+    }
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
