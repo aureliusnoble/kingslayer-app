@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { GameManager } from '../services/GameManager';
 
@@ -12,7 +12,7 @@ const CreateGameSchema = z.object({
   })
 });
 
-router.post('/games/create', (req, res) => {
+router.post('/games/create', (req: Request, res: Response) => {
   try {
     const data = CreateGameSchema.parse(req.body);
     const { game, playerId } = gameManager.createGame(
@@ -31,7 +31,7 @@ router.post('/games/create', (req, res) => {
   }
 });
 
-router.get('/games/:roomCode/exists', (req, res) => {
+router.get('/games/:roomCode/exists', (req: Request, res: Response) => {
   const { roomCode } = req.params;
   const game = gameManager.getGame(roomCode);
   
