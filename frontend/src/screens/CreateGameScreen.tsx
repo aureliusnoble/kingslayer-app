@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/common/Button';
 import { socketService } from '../services/socket';
@@ -7,9 +7,16 @@ import clsx from 'clsx';
 
 export default function CreateGameScreen() {
   const navigate = useNavigate();
-  const { loading, error } = useGameStore();
+  const { loading, error, roomCode, gameState } = useGameStore();
   const [playerName, setPlayerName] = useState('');
   const [playerCount, setPlayerCount] = useState(6);
+
+  // Navigate to lobby when game is created successfully
+  useEffect(() => {
+    if (roomCode && gameState && gameState.phase === 'lobby' && !loading) {
+      navigate('/lobby');
+    }
+  }, [roomCode, gameState, loading, navigate]);
 
   const handleCreateGame = () => {
     if (playerName.trim().length === 0) return;
