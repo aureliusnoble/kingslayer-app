@@ -212,6 +212,7 @@ export function setupSocketHandlers(io: any) {
 
       io.to(game.roomCode).emit('game_started', { gameState: game });
       io.to(game.roomCode).emit('phase_changed', { phase: 'setup' });
+      io.to(game.roomCode).emit('state_update', { gameState: game });
     });
 
     socket.on('confirm_room', (data: any) => {
