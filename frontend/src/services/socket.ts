@@ -45,12 +45,14 @@ class SocketService {
     this.socket.on('game_created', (data: any) => {
       store.setRoomCode(data.roomCode);
       store.setPlayerId(data.playerId);
+      store.setLoading(false);
     });
     
     this.socket.on('game_joined', (data: any) => {
       store.setGameState(data.gameState);
       store.setPlayerId(data.playerId);
       store.setRoomCode(data.gameState.roomCode);
+      store.setLoading(false);
     });
     
     this.socket.on('state_update', (data: any) => {
