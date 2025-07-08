@@ -1,22 +1,27 @@
 import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Button from '../components/common/Button';
+import Modal from '../components/common/Modal';
 import { socketService } from '../services/socket';
 import { useGameStore } from '../stores/gameStore';
 import { Player } from '../shared';
 import clsx from 'clsx';
 import MedievalBackground from '../components/common/MedievalBackground';
-import { LogOut, Copy, Users, Crown, Shield, CheckCircle, Clock, Link } from 'lucide-react';
+import { LogOut, Copy, Users, Crown, Shield, CheckCircle, Clock, Link, AlertTriangle, UserX } from 'lucide-react';
 
 export default function LobbyScreen() {
   const navigate = useNavigate();
   const { gameState, playerId, amIHost } = useGameStore();
+  const [showKickModal, setShowKickModal] = useState(false);
+  const [selectedKickTarget, setSelectedKickTarget] = useState<string | null>(null);
 
   if (!gameState) return null;
 
   const players = Object.values(gameState.players);
   const allReady = players.every((p: Player) => p.isReady);
-  const canStart = amIHost() && allReady && players.length === gameState.playerCount;
+  const isEvenPlayerCount = players.length % 2 === 0;
+  const hasMinPlayers = players.length >= 6;
+  const canStart = amIHost() && allReady && isEvenPlayerCount && hasMinPlayers;
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(gameState.roomCode);
@@ -56,6 +61,20 @@ export default function LobbyScreen() {
     }
   };
 
+  const handleKickPlayer = () => {
+    if (selectedKickTarget) {
+      socketService.kickPlayer(selectedKickTarget);
+      setShowKickModal(false);
+      setSelectedKickTarget(null);
+    }
+  };
+
+  const openKickModal = () => {
+    setShowKickModal(true);
+  };
+
+  const kickablePlayerOptions = players.filter(p => p.id !== playerId); // Can't kick yourself
+
   // Navigate to role reveal when game starts
   useEffect(() => {
     if (gameState && gameState.phase === 'setup') {
@@ -89,71 +108,66 @@ export default function LobbyScreen() {
             <div className="flex items-center gap-2 mb-4">
               <Users size={24} className="text-medieval-metal-gold" />
               <h2 className="text-xl font-bold text-medieval-metal-gold drop-shadow-lg">
-                Players ({players.length}/{gameState.playerCount})
+                Players ({players.length}/14)
               </h2>
             </div>
             
             <div className="space-y-2">
-              {Array.from({ length: gameState.playerCount }).map((_, index) => {
-                const player = players[index];
-                if (!player) {
-                  return (
-                    <div
-                      key={`empty-${index}`}
-                      className="p-3 bg-surface-light rounded-lg border border-dashed border-medieval-stone-light"
-                    >
-                      <div className="flex items-center gap-2 text-medieval-metal-gold">
-                        <div className="w-6 h-6 rounded-full bg-medieval-stone-dark border border-medieval-metal-gold"></div>
-                        <span className="font-semibold drop-shadow-md">Awaiting Player...</span>
-                      </div>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div
-                    key={player.id}
-                    className={clsx(
-                      'p-3 rounded-lg flex items-center justify-between transition-all duration-200',
-                      'bg-surface-light border border-medieval-stone-light',
-                      player.id === playerId && 'border-medieval-metal-gold bg-medieval-metal-gold bg-opacity-10'
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={clsx(
-                        'w-6 h-6 rounded-full border-2 flex items-center justify-center',
-                        player.isReady 
-                          ? 'bg-green-500 border-green-500' 
-                          : 'bg-medieval-stone-dark border-medieval-stone-light'
-                      )}>
-                        {player.isReady && <CheckCircle size={14} className="text-white" />}
-                      </div>
-                      
-                      <span className="font-medium text-white">
-                        {player.name}
-                        {player.isHost && (
-                          <Crown size={16} className="inline ml-2 text-medieval-metal-gold" />
-                        )}
-                        {player.id === playerId && (
-                          <span className="text-medieval-metal-gold ml-1">(You)</span>
-                        )}
-                      </span>
+              {players.map((player) => (
+                <div
+                  key={player.id}
+                  className={clsx(
+                    'p-3 rounded-lg flex items-center justify-between transition-all duration-200',
+                    'bg-surface-light border border-medieval-stone-light',
+                    player.id === playerId && 'border-medieval-metal-gold bg-medieval-metal-gold bg-opacity-10'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={clsx(
+                      'w-6 h-6 rounded-full border-2 flex items-center justify-center',
+                      player.isReady 
+                        ? 'bg-green-500 border-green-500' 
+                        : 'bg-medieval-stone-dark border-medieval-stone-light'
+                    )}>
+                      {player.isReady && <CheckCircle size={14} className="text-white" />}
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      {!player.connected && (
-                        <Clock size={16} className="text-yellow-400 animate-pulse" />
+                    <span className="font-medium text-white">
+                      {player.name}
+                      {player.isHost && (
+                        <Crown size={16} className="inline ml-2 text-medieval-metal-gold" />
                       )}
-                      <span className={clsx(
-                        'text-sm font-bold drop-shadow-md',
-                        player.isReady ? 'text-green-300' : 'text-medieval-stone-light'
-                      )}>
-                        {player.connected ? (player.isReady ? 'Ready' : 'Not Ready') : 'Connecting...'}
-                      </span>
-                    </div>
+                      {player.id === playerId && (
+                        <span className="text-medieval-metal-gold ml-1">(You)</span>
+                      )}
+                    </span>
                   </div>
-                );
-              })}
+                  
+                  <div className="flex items-center gap-2">
+                    {!player.connected && (
+                      <Clock size={16} className="text-yellow-400 animate-pulse" />
+                    )}
+                    <span className={clsx(
+                      'text-sm font-bold drop-shadow-md',
+                      player.isReady ? 'text-green-300' : 'text-medieval-stone-light'
+                    )}>
+                      {player.connected ? (player.isReady ? 'Ready' : 'Not Ready') : 'Connecting...'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              
+              {/* Show invitation message */}
+              {players.length < 14 && (
+                <div className="p-3 bg-surface-light rounded-lg border border-dashed border-medieval-stone-light">
+                  <div className="flex items-center gap-2 text-medieval-metal-gold">
+                    <div className="w-6 h-6 rounded-full bg-medieval-stone-dark border border-medieval-metal-gold"></div>
+                    <span className="font-semibold drop-shadow-md">
+                      Invite more players (up to {14 - players.length} more can join)
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -220,27 +234,130 @@ export default function LobbyScreen() {
               {gameState.players[playerId!]?.isReady ? 'NOT READY' : 'READY'}
             </Button>
 
-            {/* Start Game (Host Only) */}
+            {/* Host Controls */}
             {amIHost() && (
-              <Button
-                variant="medieval-red"
-                size="large"
-                fullWidth
-                onClick={handleStartGame}
-                disabled={!canStart}
-                className="text-lg font-bold bg-red-primary bg-opacity-90 border-2 border-red-primary shadow-lg"
-              >
-                {!allReady 
-                  ? 'Awaiting Players...' 
-                  : players.length < gameState.playerCount
-                  ? `Need ${gameState.playerCount - players.length} More Players`
-                  : 'START'
-                }
-              </Button>
+              <>
+                {/* Validation Messages */}
+                {(!hasMinPlayers || !isEvenPlayerCount) && (
+                  <div className="p-3 bg-yellow-600 bg-opacity-20 text-yellow-200 rounded-lg text-sm border border-yellow-600">
+                    {!hasMinPlayers && (
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle size={16} />
+                        <span>Need at least 6 players to start</span>
+                      </div>
+                    )}
+                    {hasMinPlayers && !isEvenPlayerCount && (
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle size={16} />
+                        <span>Need an even number of players to start (current: {players.length})</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Host Action Buttons */}
+                <div className="flex gap-3">
+                  {kickablePlayerOptions.length > 0 && (
+                    <Button
+                      variant="medieval-stone"
+                      size="large"
+                      onClick={openKickModal}
+                      className="bg-medieval-stone-medium bg-opacity-90 border-2 border-medieval-stone-light shadow-lg"
+                    >
+                      <UserX size={20} className="mr-2" />
+                      Kick Player
+                    </Button>
+                  )}
+                  <Button
+                    variant="medieval-red"
+                    size="large"
+                    fullWidth
+                    onClick={handleStartGame}
+                    disabled={!canStart}
+                    className="text-lg font-bold bg-red-primary bg-opacity-90 border-2 border-red-primary shadow-lg"
+                  >
+                    {!hasMinPlayers 
+                      ? `Need ${6 - players.length} More Players (Min: 6)`
+                      : !isEvenPlayerCount
+                      ? 'Need 1 More Player (Even Count Required)'
+                      : !allReady 
+                      ? 'Awaiting Players to Ready...' 
+                      : 'START GAME'
+                    }
+                  </Button>
+                </div>
+              </>
             )}
           </div>
         </div>
       </div>
+
+      {/* Kick Player Modal */}
+      <Modal
+        isOpen={showKickModal}
+        onClose={() => {
+          setShowKickModal(false);
+          setSelectedKickTarget(null);
+        }}
+        title="Kick Player"
+        theme="stone"
+        size="medium"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 text-lg font-semibold text-white">
+            <UserX size={24} />
+            <span>Select player to kick:</span>
+          </div>
+          <div className="space-y-2">
+            {kickablePlayerOptions.map(player => (
+              <label 
+                key={player.id} 
+                className={clsx(
+                  'flex items-center p-3 rounded-lg cursor-pointer transition-all duration-200',
+                  'bg-surface-light hover:bg-medieval-stone-light border border-medieval-stone-light',
+                  selectedKickTarget === player.id && 'bg-medieval-metal-gold border-medieval-metal-gold'
+                )}
+              >
+                <input
+                  type="radio"
+                  name="kickTarget"
+                  value={player.id}
+                  checked={selectedKickTarget === player.id}
+                  onChange={(e) => setSelectedKickTarget(e.target.value)}
+                  className="mr-3 text-medieval-metal-gold"
+                />
+                <span className="text-white font-medium">{player.name}</span>
+                {player.isHost && (
+                  <Crown size={16} className="ml-2 text-medieval-metal-gold" />
+                )}
+              </label>
+            ))}
+          </div>
+          <p className="text-sm text-red-highlight italic font-medium">
+            Warning: Kicked players will be removed from the game permanently.
+          </p>
+          <div className="flex gap-3">
+            <Button
+              variant="medieval-stone"
+              onClick={() => {
+                setShowKickModal(false);
+                setSelectedKickTarget(null);
+              }}
+              className="text-white"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="medieval-red"
+              onClick={handleKickPlayer}
+              disabled={!selectedKickTarget}
+              className="text-white font-bold"
+            >
+              Kick Player
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </MedievalBackground>
   );
 }

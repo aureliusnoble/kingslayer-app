@@ -25,10 +25,32 @@ export default function JoinGameScreen() {
   };
 
 
-  // Navigate to lobby when game is joined successfully
+  // Navigate to appropriate screen when game is joined successfully
   useEffect(() => {
-    if (storeRoomCode && gameState && gameState.phase === 'lobby' && !loading) {
-      navigate('/lobby');
+    if (storeRoomCode && gameState && !loading) {
+      const myPlayer = gameState.players[useGameStore.getState().playerId || ''];
+      
+      switch (gameState.phase) {
+        case 'lobby':
+          navigate('/lobby');
+          break;
+        case 'setup':
+          // Check if player has already seen their role
+          if (myPlayer?.isRoleReady) {
+            navigate('/game'); // Skip role reveal if already seen
+          } else {
+            navigate('/role-reveal');
+          }
+          break;
+        case 'playing':
+          navigate('/game');
+          break;
+        case 'ended':
+          navigate('/end');
+          break;
+        default:
+          navigate('/lobby');
+      }
     }
   }, [storeRoomCode, gameState, loading, navigate]);
 

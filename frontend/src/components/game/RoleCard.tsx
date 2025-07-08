@@ -201,7 +201,7 @@ export default function RoleCard({ role, canAssassinate = false, hasUsedAbility 
             <p className="text-white leading-relaxed">
               You must visit your team's Swordsmith first before you can assassinate.
             </p>
-            <Button variant="medieval-stone" fullWidth onClick={() => setShowAbility(false)}>
+            <Button variant="medieval-stone" fullWidth onClick={() => setShowAbility(false)} className="text-white">
               CLOSE
             </Button>
           </div>
@@ -225,7 +225,7 @@ export default function RoleCard({ role, canAssassinate = false, hasUsedAbility 
                 </p>
               </div>
             </div>
-            <Button variant="medieval-gold" fullWidth onClick={() => setShowAbility(false)}>
+            <Button variant="medieval-gold" fullWidth onClick={() => setShowAbility(false)} className="text-white font-bold">
               UNDERSTOOD
             </Button>
           </div>
@@ -278,6 +278,7 @@ export default function RoleCard({ role, canAssassinate = false, hasUsedAbility 
                 setShowGatekeeperSelect(false);
                 setSelectedTarget(null);
               }}
+              className="text-white"
             >
               CANCEL
             </Button>
@@ -285,6 +286,7 @@ export default function RoleCard({ role, canAssassinate = false, hasUsedAbility 
               variant="medieval-gold"
               onClick={handleGatekeeperSend}
               disabled={!selectedTarget}
+              className="text-white font-bold"
             >
               SEND
             </Button>
@@ -338,6 +340,7 @@ export default function RoleCard({ role, canAssassinate = false, hasUsedAbility 
                 setShowSwordsmithSelect(false);
                 setSelectedTarget(null);
               }}
+              className="text-white"
             >
               CANCEL
             </Button>
@@ -345,6 +348,7 @@ export default function RoleCard({ role, canAssassinate = false, hasUsedAbility 
               variant="medieval-gold"
               onClick={handleSwordsmithConfirm}
               disabled={!selectedTarget}
+              className="text-white font-bold"
             >
               CONFIRM
             </Button>

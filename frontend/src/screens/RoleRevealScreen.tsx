@@ -158,7 +158,7 @@ export default function RoleRevealScreen() {
               <p className="text-3xl font-bold text-center text-medieval-metal-gold">ROOM {currentRoom === 0 ? 'A' : 'B'}</p>
               <p className="text-sm text-gray-300">Please move to your assigned room now.</p>
               <Button variant="medieval-gold" fullWidth onClick={handleConfirmRoom}>
-                I'M IN MY ROOM
+                <p className="text-white">I'M IN MY ROOM</p>
               </Button>
             </div>
           </Modal>
@@ -257,7 +257,7 @@ export default function RoleRevealScreen() {
               <p className="text-3xl font-bold text-center text-medieval-metal-gold">ROOM {currentRoom === 0 ? 'A' : 'B'}</p>
               <p className="text-sm text-gray-300">Please move to your assigned room now.</p>
               <Button variant="medieval-gold" fullWidth onClick={handleConfirmRoom}>
-                I'M IN MY ROOM
+                               <p className="text-white">I'M IN MY ROOM</p>
               </Button>
             </div>
           </Modal>
@@ -360,7 +360,7 @@ export default function RoleRevealScreen() {
             )}
             
             <Button variant="medieval-gold" fullWidth onClick={handleConfirmRoom}>
-              I'M IN MY ROOM
+                             <p className="text-white">I'M IN MY ROOM</p>
             </Button>
           </div>
         </Modal>

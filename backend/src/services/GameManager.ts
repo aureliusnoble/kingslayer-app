@@ -111,6 +111,34 @@ export class GameManager {
     return game;
   }
 
+  kickPlayer(hostId: string, targetId: string): GameState | null {
+    const roomCode = this.playerToGame.get(hostId);
+    if (!roomCode) return null;
+
+    const game = this.games.get(roomCode);
+    if (!game) return null;
+
+    const host = game.players[hostId];
+    const target = game.players[targetId];
+
+    // Validate kick permissions
+    if (!host || !host.isHost) return null; // Only host can kick
+    if (!target) return null; // Target must exist
+    if (hostId === targetId) return null; // Host cannot kick themselves
+
+    // Remove player using same logic as leaveGame
+    delete game.players[targetId];
+    this.playerToGame.delete(targetId);
+
+    // Remove from room if playing
+    if (game.phase === 'playing') {
+      game.rooms[0].players = game.rooms[0].players.filter(id => id !== targetId);
+      game.rooms[1].players = game.rooms[1].players.filter(id => id !== targetId);
+    }
+
+    return game;
+  }
+
   setPlayerReady(playerId: string, ready: boolean): GameState | null {
     const game = this.getGameByPlayerId(playerId);
     if (!game || game.phase !== 'lobby') return null;
@@ -140,14 +168,19 @@ export class GameManager {
     if (!game || game.phase !== 'lobby') return null;
 
     const playerIds = Object.keys(game.players);
-    if (playerIds.length !== game.playerCount) return null;
+    const actualPlayerCount = playerIds.length;
+    
+    // Validate minimum players and even count requirement
+    if (actualPlayerCount < 6) return null;
+    if (actualPlayerCount % 2 !== 0) return null; // Must be even
+    if (actualPlayerCount > 14) return null; // Max 14 players
 
     // Check all players are ready
     const allReady = playerIds.every(id => game.players[id].isReady);
     if (!allReady) return null;
 
-    // Distribute roles
-    const roles = distributeRoles(game.playerCount);
+    // Distribute roles based on actual player count
+    const roles = distributeRoles(actualPlayerCount);
     playerIds.forEach((playerId, index) => {
       game.players[playerId].role = roles[index];
     });
@@ -168,7 +201,7 @@ export class GameManager {
     });
 
     // Create servant info
-    if (game.playerCount >= 14) {
+    if (actualPlayerCount >= 14) {
       game.servantInfo = {};
       const servants = playerIds.filter(id => game.players[id].role?.type === 'SERVANT');
       servants.forEach(servantId => {
@@ -454,6 +487,111 @@ export class GameManager {
     }
 
     return game;
+  }
+
+  restartGame(hostId: string): GameState | null {
+    const game = this.getGameByPlayerId(hostId);
+    if (!game) return null;
+
+    const host = game.players[hostId];
+    if (!host || !host.isHost) return null;
+
+    // Reset game state to lobby phase
+    game.phase = 'lobby';
+
+    // Reset all player states but keep the player list
+    Object.values(game.players).forEach(player => {
+      player.role = undefined;
+      player.isReady = false;
+      player.isRoleReady = false;
+      player.isRoomConfirmed = false;
+      player.hasUsedAbility = false;
+      player.canAssassinate = false;
+      player.isLeader = false;
+      player.pointingAt = undefined;
+      player.currentRoom = 0; // Reset everyone to room 0
+    });
+
+    // Reset room state
+    game.rooms = [
+      { players: [] },
+      { players: [] }
+    ];
+
+    // Clear timers
+    game.timers = {};
+
+    // Clear victory state
+    game.victory = undefined;
+
+    // Clear servant info
+    game.servantInfo = undefined;
+
+    console.log(`[GAME RESTART] Game ${game.roomCode} restarted by host ${host.name}`);
+
+    return game;
+  }
+
+  joinGameWithReconnect(roomCode: string, playerName: string, socketId: string, attemptReconnect: boolean = false): 
+    { success: true; game: GameState; playerId: string; isReconnection: boolean } | 
+    { success: false; error: 'GAME_NOT_FOUND' | 'GAME_FULL' | 'NAME_TAKEN' } {
+    
+    const game = this.games.get(roomCode.toUpperCase());
+    if (!game) return { success: false, error: 'GAME_NOT_FOUND' };
+
+    // Check for reconnection opportunity
+    if (attemptReconnect) {
+      const disconnectedPlayer = Object.values(game.players).find(p => 
+        p.name.toLowerCase() === playerName.toLowerCase() && !p.connected
+      );
+
+      if (disconnectedPlayer) {
+        // Reconnection case
+        disconnectedPlayer.socketId = socketId;
+        disconnectedPlayer.connected = true;
+        this.playerToGame.set(disconnectedPlayer.id, roomCode.toUpperCase());
+        
+        console.log(`[PLAYER RECONNECT] Player ${playerName} reconnected to game ${roomCode}`);
+        return { 
+          success: true, 
+          game, 
+          playerId: disconnectedPlayer.id, 
+          isReconnection: true 
+        };
+      }
+    }
+
+    // Check if name is taken by a connected player
+    const connectedPlayerWithName = Object.values(game.players).find(p => 
+      p.name.toLowerCase() === playerName.toLowerCase() && p.connected
+    );
+    if (connectedPlayerWithName) {
+      return { success: false, error: 'NAME_TAKEN' };
+    }
+
+    // Normal join logic
+    const playerIds = Object.keys(game.players);
+    if (playerIds.length >= game.playerCount) return { success: false, error: 'GAME_FULL' };
+
+    const playerId = generatePlayerId();
+    const player: Player = {
+      id: playerId,
+      name: playerName,
+      socketId,
+      connected: true,
+      currentRoom: 0,
+      isHost: false,
+      isReady: false,
+      isRoleReady: false,
+      isRoomConfirmed: false,
+      hasUsedAbility: false,
+      isLeader: false
+    };
+
+    game.players[playerId] = player;
+    this.playerToGame.set(playerId, roomCode.toUpperCase());
+
+    return { success: true, game, playerId, isReconnection: false };
   }
 
   private generateUniqueRoomCode(): string {

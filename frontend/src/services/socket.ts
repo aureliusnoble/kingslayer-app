@@ -63,7 +63,9 @@ class SocketService {
         currentStore.setReconnecting(true);
         // Reconnect to the game with existing playerId
         setTimeout(() => {
-          this.reconnectGame(currentStore.playerId, currentStore.roomCode);
+          if (currentStore.playerId && currentStore.roomCode) {
+            this.reconnectGame(currentStore.playerId, currentStore.roomCode);
+          }
         }, 100);
       }
     });
@@ -81,12 +83,18 @@ class SocketService {
     });
     
     this.socket.on('game_joined', (data: any) => {
-      debugLog('game_joined', { roomCode: data.gameState.roomCode, playerCount: Object.keys(data.gameState.players).length });
+      debugLog('game_joined', { roomCode: data.gameState.roomCode, playerCount: Object.keys(data.gameState.players).length, isReconnection: data.isReconnection });
       store.setGameState(data.gameState);
       store.setPlayerId(data.playerId);
       store.setRoomCode(data.gameState.roomCode);
       store.setLoading(false);
       store.setReconnecting(false); // Clear reconnecting state
+      
+      // Handle reconnection navigation
+      if (data.isReconnection) {
+        console.log('🔄 Reconnection successful, navigating to appropriate screen');
+        // The navigation will be handled by the calling component based on game phase
+      }
     });
 
     this.socket.on('player_joined', (data: any) => {
@@ -278,6 +286,46 @@ class SocketService {
       const store = useGameStore.getState();
       store.setRoomConfirmationProgress(data);
     });
+    
+    this.socket.on('game_restarted', (data: any) => {
+      debugLog('game_restarted', { roomCode: data.gameState.roomCode });
+      console.log('🔄 Game restarted, returning to lobby');
+      
+      // Reset game lifecycle flags
+      gameHasStarted = false;
+      playingPhaseReached = false;
+      
+      // Update game state
+      store.setGameState(data.gameState);
+      
+      // Clear any modals or temporary states
+      store.setRoomChangeRequired(false);
+      store.clearMyRole();
+      
+      // Navigate to lobby will be handled by screen components listening to game state
+    });
+    
+    this.socket.on('player_reconnected', (data: any) => {
+      debugLog('player_reconnected', { playerId: data.playerId, playerName: data.playerName });
+      console.log(`🔄 Player ${data.playerName} reconnected to the game`);
+      // The state update will be handled by the state_update event
+    });
+
+    this.socket.on('player_kicked', (data: any) => {
+      debugLog('player_kicked', { playerId: data.playerId, message: data.message });
+      console.log('🔨 Player kicked:', data.message);
+      
+      // If this player was kicked, navigate them away
+      if (!data.playerId) {
+        // This is the kicked player
+        alert(data.message);
+        store.reset();
+        window.location.href = '/';
+      } else {
+        // This is a notification about someone else being kicked
+        console.log(`Player ${data.playerId} was kicked from the game`);
+      }
+    });
   }
   
   // Emit events
@@ -288,11 +336,15 @@ class SocketService {
     this.socket.emit('create_game', { playerName, playerCount });
   }
   
-  joinGame(roomCode: string, playerName: string): void {
+  joinGame(roomCode: string, playerName: string, attemptReconnect: boolean = true): void {
     if (!this.socket) return;
-    debugLog('emit_join_game', { roomCode: roomCode.toUpperCase(), playerName });
+    debugLog('emit_join_game', { roomCode: roomCode.toUpperCase(), playerName, attemptReconnect });
     useGameStore.getState().setLoading(true);
-    this.socket.emit('join_game', { roomCode: roomCode.toUpperCase(), playerName });
+    this.socket.emit('join_game', { 
+      roomCode: roomCode.toUpperCase(), 
+      playerName,
+      attemptReconnect 
+    });
   }
   
   leaveGame(): void {
@@ -358,6 +410,20 @@ class SocketService {
     this.socket.emit('request_state');
   }
 
+  restartGame(): void {
+    if (!this.socket) return;
+    debugLog('emit_restart_game', {});
+    console.log('🔄 Requesting game restart');
+    this.socket.emit('restart_game');
+  }
+
+  kickPlayer(targetId: string): void {
+    if (!this.socket) return;
+    debugLog('emit_kick_player', { targetId });
+    console.log('🔨 Kicking player:', targetId);
+    this.socket.emit('kick_player', { targetId });
+  }
+  
   reconnectGame(playerId: string, roomCode: string): void {
     if (!this.socket) return;
     console.log('🔄 Attempting to reconnect to game:', { playerId, roomCode });

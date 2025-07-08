@@ -33,11 +33,6 @@ export function distributeRoles(playerCount: number): Role[] {
   }
   
   if (playerCount >= 10) {
-    roles.push({ type: 'GUARD', team: 'RED' });
-    roles.push({ type: 'GUARD', team: 'BLUE' });
-  }
-  
-  if (playerCount >= 12) {
     // Spies need fake roles
     const fakeRoles = generateSpyFakeRoles();
     roles.push({ 
@@ -50,6 +45,11 @@ export function distributeRoles(playerCount: number): Role[] {
       team: 'BLUE',
       fakeRole: fakeRoles.red
     });
+  }
+  
+  if (playerCount >= 12) {
+    roles.push({ type: 'GUARD', team: 'RED' });
+    roles.push({ type: 'GUARD', team: 'BLUE' });
   }
   
   if (playerCount >= 14) {

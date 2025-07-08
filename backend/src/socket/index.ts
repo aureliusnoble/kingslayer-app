@@ -17,7 +17,8 @@ const debugLog = (event: string, data: any, socketId?: string) => {
 // Validation schemas
 const JoinGameSchema = z.object({
   roomCode: z.string().length(6).regex(/^[A-Z0-9]+$/),
-  playerName: z.string().min(1).max(20)
+  playerName: z.string().min(1).max(20),
+  attemptReconnect: z.boolean().optional()
 });
 
 const CreateGameSchema = z.object({
@@ -95,10 +96,11 @@ export function setupSocketHandlers(io: any) {
     socket.on('join_game', (data: any) => {
       try {
         const validated = JoinGameSchema.parse(data);
-        const result = gameManager.joinGame(
+        const result = gameManager.joinGameWithReconnect(
           validated.roomCode,
           validated.playerName,
-          socket.id
+          socket.id,
+          validated.attemptReconnect || true // Default to attempting reconnection
         );
 
         if (!result.success) {
@@ -116,16 +118,42 @@ export function setupSocketHandlers(io: any) {
           return;
         }
 
-        const { game, playerId } = result;
+        const { game, playerId, isReconnection } = result;
         socketToPlayer.set(socket.id, playerId);
         socket.join(game.roomCode);
 
-        socket.emit('game_joined', { gameState: game, playerId });
-        
-        // Notify others
-        socket.to(game.roomCode).emit('player_joined', { 
-          player: game.players[playerId] 
+        socket.emit('game_joined', { 
+          gameState: game, 
+          playerId,
+          isReconnection 
         });
+        
+        if (isReconnection) {
+          // Notify others about reconnection
+          socket.to(game.roomCode).emit('player_reconnected', { 
+            playerId,
+            playerName: game.players[playerId].name
+          });
+          
+          // Send role info if player has one
+          const player = game.players[playerId];
+          if (player.role) {
+            socket.emit('role_assigned', { 
+              role: player.role,
+              servantKingId: game.servantInfo?.[playerId]
+            });
+            
+            // Send room assignment
+            socket.emit('room_assignment', { room: player.currentRoom });
+          }
+          
+          debugLog('player_reconnected', { playerId, playerName: player.name }, socket.id);
+        } else {
+          // Notify others about new player
+          socket.to(game.roomCode).emit('player_joined', { 
+            player: game.players[playerId] 
+          });
+        }
         
         // Send updated game state to all players in the room
         io.to(game.roomCode).emit('state_update', { gameState: game });
@@ -149,6 +177,39 @@ export function setupSocketHandlers(io: any) {
       }
 
       socketToPlayer.delete(socket.id);
+    });
+
+    socket.on('kick_player', (data: any) => {
+      const hostId = socketToPlayer.get(socket.id);
+      if (!hostId) return;
+
+      const game = gameManager.kickPlayer(hostId, data.targetId);
+      if (game) {
+        // Get the kicked player's socket to disconnect them
+        const kickedPlayer = data.targetId;
+        const kickedSocket = [...socketToPlayer.entries()].find(([_, playerId]) => playerId === kickedPlayer)?.[0];
+        
+        if (kickedSocket) {
+          const kickedSocketObj = io.sockets.sockets.get(kickedSocket);
+          if (kickedSocketObj) {
+            // Notify the kicked player
+            kickedSocketObj.emit('player_kicked', { 
+              message: 'You have been kicked from the game by the host' 
+            });
+            // Remove them from the room
+            kickedSocketObj.leave(game.roomCode);
+            socketToPlayer.delete(kickedSocket);
+          }
+        }
+
+        // Notify remaining players
+        socket.to(game.roomCode).emit('player_kicked', { 
+          playerId: data.targetId,
+          message: `Player was kicked from the game`
+        });
+        
+        io.to(game.roomCode).emit('state_update', { gameState: game });
+      }
     });
 
     socket.on('player_ready', () => {
@@ -418,6 +479,32 @@ export function setupSocketHandlers(io: any) {
         
         io.to(game.roomCode).emit('state_update', { gameState: game });
       }
+    });
+
+    socket.on('restart_game', () => {
+      const playerId = socketToPlayer.get(socket.id);
+      if (!playerId) {
+        socket.emit('error', {
+          message: 'Player not found',
+          code: 'PLAYER_NOT_FOUND'
+        });
+        return;
+      }
+
+      const game = gameManager.restartGame(playerId);
+      if (!game) {
+        socket.emit('error', {
+          message: 'Failed to restart game. Only the host can restart.',
+          code: 'RESTART_FAILED'
+        });
+        return;
+      }
+
+      debugLog('game_restarted', { roomCode: game.roomCode }, socket.id);
+      
+      // Notify all players about the restart
+      io.to(game.roomCode).emit('game_restarted', { gameState: game });
+      io.to(game.roomCode).emit('state_update', { gameState: game });
     });
 
     socket.on('request_state', () => {

@@ -20,9 +20,7 @@ export default function HomeScreen() {
               <h1 className="text-4xl font-bold mb-2 text-white font-display tracking-wider">
                 KINGSLAYER
               </h1>
-              <p className="text-medieval-metal-gold text-xl font-semibold drop-shadow-lg">
-                Social Deduction Game
-              </p>
+            
             </div>
           </div>
 
@@ -60,7 +58,7 @@ export default function HomeScreen() {
           </div>
 
           <p className="text-center text-sm text-medieval-stone-light font-medium drop-shadow-md">
-            Version 1.0.0
+            Version 0.0.1
           </p>
         </div>
       </div>

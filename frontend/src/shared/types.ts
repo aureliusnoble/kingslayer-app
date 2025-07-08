@@ -66,7 +66,7 @@ export interface GameState {
 // Socket Events
 export interface ClientToServerEvents {
   'create_game': { playerName: string; playerCount: number };
-  'join_game': { roomCode: string; playerName: string };
+  'join_game': { roomCode: string; playerName: string; attemptReconnect?: boolean };
   'leave_game': void;
   'player_ready': void;
   'player_role_ready': void; // Ready after seeing role assignment
@@ -77,13 +77,15 @@ export interface ClientToServerEvents {
   'send_player': { targetId: string };
   'gatekeeper_send': { targetId: string };
   'swordsmith_confirm': { assassinId: string };
+  'restart_game': void;
   'request_state': void;
 }
 
 export interface ServerToClientEvents {
   'game_created': { roomCode: string; playerId: string };
-  'game_joined': { gameState: GameState; playerId: string };
+  'game_joined': { gameState: GameState; playerId: string; isReconnection?: boolean };
   'player_joined': { player: Player };
+  'player_reconnected': { playerId: string; playerName: string };
   'player_left': { playerId: string };
   'player_ready_changed': { playerId: string; ready: boolean };
   'player_role_ready_changed': { playerId: string; ready: boolean };
@@ -102,6 +104,7 @@ export interface ServerToClientEvents {
     room0Timer?: number; 
     room1Timer?: number; 
   };
+  'game_restarted': { gameState: GameState };
   'error': { message: string; code: string };
   'state_update': { gameState: GameState };
 }

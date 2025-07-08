@@ -38,6 +38,7 @@ interface GameStore {
   setPlayerId: (playerId: string | null) => void;
   setGameState: (gameState: GameState) => void;
   setMyRole: (role: Role, servantKingId?: string) => void;
+  clearMyRole: () => void;
   setCurrentRoom: (room: 0 | 1) => void;
   setRoomChangeRequired: (required: boolean) => void;
   setError: (error: string | null) => void;
@@ -81,6 +82,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setPlayerId: (playerId) => set({ playerId }),
   setGameState: (gameState) => set({ gameState }),
   setMyRole: (role, servantKingId) => set({ myRole: role, servantKingId }),
+  clearMyRole: () => set({ myRole: null, servantKingId: null }),
   setCurrentRoom: (room) => set({ currentRoom: room }),
   setRoomChangeRequired: (required) => set({ roomChangeRequired: required }),
   setError: (error) => set({ error }),
@@ -147,7 +149,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (player.hasUsedAbility) return false;
     
     // In games with 8+ players, need swordsmith confirmation
-    if (gameState && gameState.playerCount >= 8) {
+    if (gameState && Object.keys(gameState.players).length >= 8) {
       return player.canAssassinate || false;
     }
     

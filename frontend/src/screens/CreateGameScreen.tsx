@@ -3,16 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import Button from '../components/common/Button';
 import { socketService } from '../services/socket';
 import { useGameStore } from '../stores/gameStore';
-import clsx from 'clsx';
 import MedievalBackground from '../components/common/MedievalBackground';
 import MedievalInput from '../components/common/MedievalInput';
-import { ChevronLeft, Users } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 
 export default function CreateGameScreen() {
   const navigate = useNavigate();
   const { loading, error, roomCode, gameState } = useGameStore();
   const [playerName, setPlayerName] = useState('');
-  const [playerCount, setPlayerCount] = useState(6);
 
   // Navigate to lobby when game is created successfully
   useEffect(() => {
@@ -23,7 +21,7 @@ export default function CreateGameScreen() {
 
   const handleCreateGame = () => {
     if (playerName.trim().length === 0) return;
-    socketService.createGame(playerName.trim(), playerCount);
+    socketService.createGame(playerName.trim(), 14); // Max capacity for dynamic joining
   };
 
   return (
@@ -59,43 +57,9 @@ export default function CreateGameScreen() {
             />
           </div>
 
-          {/* Player Count Selection */}
+          {/* Game Info */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Users size={24} className="text-medieval-metal-gold" />
-              <label className="text-lg font-semibold text-medieval-metal-gold drop-shadow-md">Player Count:</label>
-            </div>
-            
-            <div className="grid grid-cols-4 gap-2">
-              {[6, 8, 10, 12].map((count) => (
-                <button
-                  key={count}
-                  onClick={() => setPlayerCount(count)}
-                  className={clsx(
-                    'py-3 rounded-lg font-semibold transition-all duration-200 border-2',
-                    'hover:scale-105 transform',
-                    playerCount === count
-                      ? 'bg-medieval-metal-gold text-surface-dark border-medieval-metal-gold shadow-lg'
-                      : 'bg-surface-medium text-white border-medieval-stone-light hover:border-medieval-metal-gold'
-                  )}
-                >
-                  {count}
-                </button>
-              ))}
-            </div>
-            
-            <button
-              onClick={() => setPlayerCount(14)}
-              className={clsx(
-                'py-3 w-24 rounded-lg font-semibold transition-all duration-200 border-2',
-                'hover:scale-105 transform',
-                playerCount === 14
-                  ? 'bg-medieval-metal-gold text-surface-dark border-medieval-metal-gold shadow-lg'
-                  : 'bg-surface-medium text-white border-medieval-stone-light hover:border-medieval-metal-gold'
-              )}
-            >
-              14
-            </button>
+  
           </div>
 
           {/* Error Display */}
