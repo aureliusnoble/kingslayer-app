@@ -31,8 +31,20 @@ export default function LobbyScreen() {
   };
 
   const handleStartGame = () => {
+    console.log('START GAME clicked', {
+      canStart,
+      amIHost: amIHost(),
+      allReady,
+      playerCount: players.length,
+      maxPlayers: gameState.playerCount,
+      players: players.map(p => ({ name: p.name, isReady: p.isReady, isHost: p.isHost }))
+    });
+    
     if (canStart) {
+      console.log('Calling socketService.startGame()');
       socketService.startGame();
+    } else {
+      console.log('Cannot start game - conditions not met');
     }
   };
 

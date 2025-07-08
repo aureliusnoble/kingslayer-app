@@ -205,7 +205,12 @@ class SocketService {
   }
   
   startGame(): void {
-    if (!this.socket) return;
+    if (!this.socket) {
+      console.log('Cannot start game - no socket connection');
+      return;
+    }
+    debugLog('emit_start_game', {});
+    console.log('Emitting start_game event to server');
     this.socket.emit('start_game');
   }
   

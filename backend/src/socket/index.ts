@@ -153,14 +153,30 @@ export function setupSocketHandlers(io: any) {
     });
 
     socket.on('start_game', () => {
+      debugLog('start_game_received', {}, socket.id);
       const playerId = socketToPlayer.get(socket.id);
-      if (!playerId) return;
+      if (!playerId) {
+        debugLog('start_game_no_player_id', { socketId: socket.id }, socket.id);
+        return;
+      }
 
       const currentGame = gameManager.getGameByPlayerId(playerId);
-      if (!currentGame) return;
+      if (!currentGame) {
+        debugLog('start_game_no_game', { playerId }, socket.id);
+        return;
+      }
 
       const player = currentGame.players[playerId];
+      debugLog('start_game_player_check', { 
+        playerId, 
+        isHost: player.isHost,
+        playerCount: Object.keys(currentGame.players).length,
+        maxPlayers: currentGame.playerCount,
+        allReady: Object.values(currentGame.players).every((p: any) => p.isReady)
+      }, socket.id);
+      
       if (!player.isHost) {
+        debugLog('start_game_not_host', { playerId }, socket.id);
         socket.emit('error', { 
           message: 'Only host can start game', 
           code: 'NOT_HOST' 
@@ -170,12 +186,15 @@ export function setupSocketHandlers(io: any) {
 
       const game = gameManager.startGame(currentGame.roomCode);
       if (!game) {
+        debugLog('start_game_failed', { roomCode: currentGame.roomCode }, socket.id);
         socket.emit('error', { 
           message: 'Cannot start game', 
           code: 'START_FAILED' 
         });
         return;
       }
+      
+      debugLog('start_game_success', { roomCode: game.roomCode, phase: game.phase }, socket.id);
 
       // Send role assignments to each player
       Object.values(game.players).forEach((p: any) => {
