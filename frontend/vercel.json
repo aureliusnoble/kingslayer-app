@@ -1,0 +1,11 @@
+{
+  "env": {
+    "VITE_BACKEND_URL": "https://kingslayer-backend.onrender.com"
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
