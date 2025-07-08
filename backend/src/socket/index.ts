@@ -1,10 +1,6 @@
-import { Server, Socket } from 'socket.io';
-import { ClientToServerEvents, ServerToClientEvents } from 'kingslayer-shared';
+// Socket.io setup
 import { gameManager } from '../routes/gameRoutes';
 import { z } from 'zod';
-
-type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
-type TypedServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
 // Validation schemas
 const JoinGameSchema = z.object({
@@ -20,13 +16,13 @@ const CreateGameSchema = z.object({
 // Store socket ID to player ID mapping
 const socketToPlayer = new Map<string, string>();
 
-export function setupSocketHandlers(io: TypedServer) {
+export function setupSocketHandlers(io: any) {
   // Timer updates every second
   setInterval(() => {
     gameManager.updateTimers();
     
     // Send timer updates to all games
-    io.sockets.sockets.forEach((socket) => {
+    io.sockets.sockets.forEach((socket: any) => {
       const playerId = socketToPlayer.get(socket.id);
       if (playerId) {
         const game = gameManager.getGameByPlayerId(playerId);
@@ -40,10 +36,10 @@ export function setupSocketHandlers(io: TypedServer) {
     });
   }, 1000);
 
-  io.on('connection', (socket: TypedSocket) => {
+  io.on('connection', (socket: any) => {
     console.log('Client connected:', socket.id);
 
-    socket.on('create_game', (data) => {
+    socket.on('create_game', (data: any) => {
       try {
         const validated = CreateGameSchema.parse(data);
         const { game, playerId } = gameManager.createGame(
@@ -69,7 +65,7 @@ export function setupSocketHandlers(io: TypedServer) {
       }
     });
 
-    socket.on('join_game', (data) => {
+    socket.on('join_game', (data: any) => {
       try {
         const validated = JoinGameSchema.parse(data);
         const result = gameManager.joinGame(
@@ -163,7 +159,7 @@ export function setupSocketHandlers(io: TypedServer) {
       }
 
       // Send role assignments to each player
-      Object.values(game.players).forEach(p => {
+      Object.values(game.players).forEach((p: any) => {
         const playerSocket = io.sockets.sockets.get(p.socketId);
         if (playerSocket && p.role) {
           playerSocket.emit('role_assigned', { 
@@ -180,13 +176,13 @@ export function setupSocketHandlers(io: TypedServer) {
       io.to(game.roomCode).emit('phase_changed', { phase: 'setup' });
     });
 
-    socket.on('confirm_room', ({ room }) => {
+    socket.on('confirm_room', (data: any) => {
       const playerId = socketToPlayer.get(socket.id);
       if (!playerId) return;
 
-      const game = gameManager.confirmPlayerRoom(playerId, room);
+      const game = gameManager.confirmPlayerRoom(playerId, data.room);
       if (game) {
-        io.to(game.roomCode).emit('room_confirmed', { playerId, room });
+        io.to(game.roomCode).emit('room_confirmed', { playerId, room: data.room });
         
         if (game.phase === 'playing') {
           io.to(game.roomCode).emit('phase_changed', { phase: 'playing' });
@@ -196,13 +192,13 @@ export function setupSocketHandlers(io: TypedServer) {
       }
     });
 
-    socket.on('point_at_player', ({ targetId }) => {
+    socket.on('point_at_player', (data: any) => {
       const playerId = socketToPlayer.get(socket.id);
       if (!playerId) return;
 
-      const game = gameManager.updatePointing(playerId, targetId);
+      const game = gameManager.updatePointing(playerId, data.targetId);
       if (game) {
-        io.to(game.roomCode).emit('pointing_changed', { playerId, targetId });
+        io.to(game.roomCode).emit('pointing_changed', { playerId, targetId: data.targetId });
         
         // Check if leader changed
         const player = game.players[playerId];
@@ -218,17 +214,17 @@ export function setupSocketHandlers(io: TypedServer) {
       }
     });
 
-    socket.on('send_player', ({ targetId }) => {
+    socket.on('send_player', (data: any) => {
       const playerId = socketToPlayer.get(socket.id);
       if (!playerId) return;
 
-      const game = gameManager.sendPlayer(playerId, targetId);
+      const game = gameManager.sendPlayer(playerId, data.targetId);
       if (game) {
-        const target = game.players[targetId];
+        const target = game.players[data.targetId];
         const fromRoom = target.currentRoom === 0 ? 1 : 0;
         
         io.to(game.roomCode).emit('player_sent', { 
-          playerId: targetId, 
+          playerId: data.targetId, 
           fromRoom, 
           toRoom: target.currentRoom 
         });
@@ -243,17 +239,17 @@ export function setupSocketHandlers(io: TypedServer) {
       }
     });
 
-    socket.on('gatekeeper_send', ({ targetId }) => {
+    socket.on('gatekeeper_send', (data: any) => {
       const playerId = socketToPlayer.get(socket.id);
       if (!playerId) return;
 
-      const game = gameManager.gatekeeperSend(playerId, targetId);
+      const game = gameManager.gatekeeperSend(playerId, data.targetId);
       if (game) {
-        const target = game.players[targetId];
+        const target = game.players[data.targetId];
         const fromRoom = target.currentRoom === 0 ? 1 : 0;
         
         io.to(game.roomCode).emit('player_sent', { 
-          playerId: targetId, 
+          playerId: data.targetId, 
           fromRoom, 
           toRoom: target.currentRoom 
         });
@@ -268,17 +264,17 @@ export function setupSocketHandlers(io: TypedServer) {
       }
     });
 
-    socket.on('swordsmith_confirm', ({ assassinId }) => {
+    socket.on('swordsmith_confirm', (data: any) => {
       const playerId = socketToPlayer.get(socket.id);
       if (!playerId) return;
 
-      const game = gameManager.swordsmithConfirm(playerId, assassinId);
+      const game = gameManager.swordsmithConfirm(playerId, data.assassinId);
       if (game) {
         // Notify the assassin
-        const assassin = game.players[assassinId];
+        const assassin = game.players[data.assassinId];
         const assassinSocket = io.sockets.sockets.get(assassin.socketId);
         if (assassinSocket) {
-          assassinSocket.emit('swordsmith_confirmed', { assassinId });
+          assassinSocket.emit('swordsmith_confirmed', { assassinId: data.assassinId });
         }
         
         io.to(game.roomCode).emit('state_update', { gameState: game });

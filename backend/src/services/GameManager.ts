@@ -1,4 +1,4 @@
-import { GameState, Player, Role, Team } from 'kingslayer-shared';
+import { GameState, Player } from '../shared';
 import { generateRoomCode, generatePlayerId, distributeRoles, assignRooms } from '../utils/gameUtils';
 
 export class GameManager {
@@ -163,7 +163,7 @@ export class GameManager {
     return game;
   }
 
-  confirmPlayerRoom(playerId: string, room: 0 | 1): GameState | null {
+  confirmPlayerRoom(playerId: string, _room: 0 | 1): GameState | null {
     const game = this.getGameByPlayerId(playerId);
     if (!game || game.phase !== 'setup') return null;
 
@@ -322,7 +322,7 @@ export class GameManager {
 
   getGameByPlayerId(playerId: string): GameState | null {
     const roomCode = this.playerToGame.get(playerId);
-    return roomCode ? this.games.get(roomCode) : null;
+    return roomCode ? this.games.get(roomCode) || null : null;
   }
 
   updateSocketId(playerId: string, socketId: string): GameState | null {

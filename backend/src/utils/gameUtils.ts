@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { RoleType, Team, Role } from 'kingslayer-shared';
+import { RoleType, Team, Role } from '../shared';
 
 export function generateRoomCode(): string {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
