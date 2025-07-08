@@ -73,27 +73,27 @@ export default function HomeScreen() {
         <div className="space-y-4 text-sm">
           <div>
             <h3 className="font-semibold mb-1 text-medieval-stone-dark">Objective</h3>
-            <p className="text-medieval-stone-dark">Each team (Red and Blue) tries to assassinate the opposing team's King while protecting their own.</p>
+            <p className="text-medieval-stone-dark">Each team (Red and Blue) tries to assassinate the opposing team's King first.</p>
           </div>
           
           <div>
             <h3 className="font-semibold mb-1 text-medieval-stone-dark">Setup</h3>
-            <p className="text-medieval-stone-dark">Players are secretly assigned roles and teams, then separated into two physical rooms.</p>
+            <p className="text-medieval-stone-dark">Players are secretly assigned roles and teams, and then are randomly assigned into two physical rooms.</p>
           </div>
           
           <div>
             <h3 className="font-semibold mb-1 text-medieval-stone-dark">Gameplay</h3>
             <ul className="list-disc list-inside space-y-1 text-medieval-stone-dark">
-              <li>Elect leaders by pointing at players</li>
-              <li>Leaders can send players between rooms</li>
-              <li>Use special abilities to gather information</li>
-              <li>Assassins must identify and eliminate the enemy King</li>
+              <li>Elect leaders by pointing at players. If more than 50% of the room point at you, you become leader.</li>
+              <li>Leaders can send players between rooms (with a cooldown timer).</li>
+              <li>Use special abilities (explained in the app)</li>
+              <li>Assassins must eliminate the enemy King</li>
             </ul>
           </div>
           
           <div>
             <h3 className="font-semibold mb-1 text-medieval-stone-dark">Victory</h3>
-            <p className="text-medieval-stone-dark">The game ends when an Assassin successfully identifies the opposing King, or fails and reveals their own team's position.</p>
+            <p className="text-medieval-stone-dark">The game ends when an Assassin attempts to kill a player. If it was the opposing King their team wins, otherwise they lose.</p>
           </div>
         </div>
       </Modal>
