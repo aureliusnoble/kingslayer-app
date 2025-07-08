@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/common/Button';
 import { socketService } from '../services/socket';
 import { useGameStore } from '../stores/gameStore';
 import MedievalBackground from '../components/common/MedievalBackground';
 import MedievalInput from '../components/common/MedievalInput';
-import CodeInput from '../components/common/CodeInput';
+import CodeInput, { CodeInputRef } from '../components/common/CodeInput';
 import { ChevronLeft, DoorOpen, ClipboardCheck, AlertTriangle } from 'lucide-react';
 
 export default function JoinGameScreen() {
@@ -13,6 +13,7 @@ export default function JoinGameScreen() {
   const { loading, error, roomCode: storeRoomCode, gameState } = useGameStore();
   const [playerName, setPlayerName] = useState('');
   const [roomCode, setRoomCode] = useState('');
+  const codeInputRef = useRef<CodeInputRef>(null);
 
   const handleCodeChange = (value: string) => {
     setRoomCode(value); // CodeInput component handles validation
@@ -22,6 +23,11 @@ export default function JoinGameScreen() {
     if (roomCode.length !== 6 || !playerName.trim()) return;
     
     socketService.joinGame(roomCode, playerName.trim());
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleJoinGame();
   };
 
 
@@ -63,6 +69,10 @@ export default function JoinGameScreen() {
     }
   };
 
+  const focusCodeInput = () => {
+    codeInputRef.current?.focus();
+  };
+
   return (
     <MedievalBackground variant="battlements">
       <div className="min-h-screen flex flex-col p-6 safe-top safe-bottom">
@@ -81,7 +91,7 @@ export default function JoinGameScreen() {
           <div className="w-16" />
         </div>
 
-        <div className="flex-1 max-w-sm mx-auto w-full space-y-6">
+        <form onSubmit={handleFormSubmit} className="flex-1 max-w-sm mx-auto w-full space-y-6">
           {/* Name Input */}
           <div className="space-y-2">
             <label className="text-lg font-semibold text-medieval-metal-gold drop-shadow-md">
@@ -93,25 +103,33 @@ export default function JoinGameScreen() {
               onChange={(e) => setPlayerName(e.target.value)}
               maxLength={20}
               placeholder="Enter your name"
+              inputMode="text"
             />
           </div>
 
           {/* Room Code Input */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
+            <div 
+              className="flex items-center gap-2 cursor-pointer"
+              onClick={focusCodeInput}
+            >
               <DoorOpen size={24} className="text-medieval-metal-gold" />
-              <label className="text-lg font-semibold text-medieval-metal-gold drop-shadow-md">Room Code:</label>
+              <label className="text-lg font-semibold text-medieval-metal-gold drop-shadow-md cursor-pointer">Room Code:</label>
             </div>
             
-            <CodeInput
-              value={roomCode}
-              onChange={handleCodeChange}
-              autoFocus
-              className="mb-4"
-            />
+            <div tabIndex={-1} onClick={focusCodeInput}>
+              <CodeInput
+                ref={codeInputRef}
+                value={roomCode}
+                onChange={handleCodeChange}
+                autoFocus={false}
+                className="mb-4"
+              />
+            </div>
 
             {/* Paste Button */}
             <button
+              type="button"
               onClick={handlePasteFromClipboard}
               className="flex items-center gap-2 mx-auto px-4 py-2 text-sm text-medieval-stone-light hover:text-medieval-metal-gold transition-colors font-medium"
             >
@@ -139,16 +157,16 @@ export default function JoinGameScreen() {
 
           {/* Join Button */}
           <Button
+            type="submit"
             variant="medieval-blue"
             size="large"
             fullWidth
-            onClick={handleJoinGame}
             disabled={loading || roomCode.length !== 6 || !playerName.trim()}
             className="text-lg font-bold bg-blue-primary bg-opacity-90 border-2 border-blue-primary shadow-lg"
           >
             {loading ? 'Joining...' : 'JOIN ROOM'}
           </Button>
-        </div>
+        </form>
       </div>
     </MedievalBackground>
   );

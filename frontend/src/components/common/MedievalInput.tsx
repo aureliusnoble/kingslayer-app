@@ -56,6 +56,7 @@ const MedievalInput = forwardRef<HTMLInputElement, MedievalInputProps>(({
         }}
         autoCorrect="off"
         spellCheck="false"
+        enterKeyHint="done"
         {...props}
       />
       

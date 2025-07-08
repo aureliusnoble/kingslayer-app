@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import clsx from 'clsx';
 
 interface CodeInputProps {
@@ -10,16 +10,26 @@ interface CodeInputProps {
   disabled?: boolean;
 }
 
-export default function CodeInput({
+export interface CodeInputRef {
+  focus: () => void;
+}
+
+const CodeInput = forwardRef<CodeInputRef, CodeInputProps>(({
   length = 6,
   value,
   onChange,
   className,
   autoFocus = false,
   disabled = false
-}: CodeInputProps) {
+}, ref) => {
   const [inputs, setInputs] = useState<string[]>(Array(length).fill(''));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      inputRefs.current[0]?.focus();
+    }
+  }));
 
   useEffect(() => {
     const newInputs = Array(length).fill('');
@@ -124,4 +134,8 @@ export default function CodeInput({
       ))}
     </div>
   );
-}
+});
+
+CodeInput.displayName = 'CodeInput';
+
+export default CodeInput;
