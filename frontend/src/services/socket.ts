@@ -124,6 +124,16 @@ class SocketService {
       }
     });
 
+    this.socket.on('game_started', (data: any) => {
+      debugLog('game_started', { phase: data.gameState.phase });
+      // Game started event - state_update will handle the actual state change
+    });
+
+    this.socket.on('phase_changed', (data: any) => {
+      debugLog('phase_changed', { phase: data.phase });
+      // Phase changed event - state_update will handle the actual state change
+    });
+
     this.socket.on('error', (data: any) => {
       store.setError(data.message);
       store.setLoading(false);
