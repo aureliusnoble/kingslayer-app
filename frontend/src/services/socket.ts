@@ -45,7 +45,7 @@ class SocketService {
     this.socket.on('game_created', (data: any) => {
       store.setRoomCode(data.roomCode);
       store.setPlayerId(data.playerId);
-      store.setLoading(false);
+      // Don't set loading=false yet - wait for state_update
     });
     
     this.socket.on('game_joined', (data: any) => {
@@ -57,6 +57,11 @@ class SocketService {
     
     this.socket.on('state_update', (data: any) => {
       store.setGameState(data.gameState);
+      // Set loading=false if we have roomCode (indicates game creation complete)
+      const currentState = useGameStore.getState();
+      if (currentState.roomCode && currentState.loading) {
+        store.setLoading(false);
+      }
     });
     
     this.socket.on('role_assigned', (data: any) => {

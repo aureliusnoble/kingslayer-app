@@ -122,12 +122,13 @@ export function setupSocketHandlers(io: any) {
       if (!currentGame) return;
 
       const player = currentGame.players[playerId];
-      const game = gameManager.setPlayerReady(playerId, !player.isReady);
+      const newReadyState = !player.isReady;
+      const game = gameManager.setPlayerReady(playerId, newReadyState);
       
       if (game) {
         io.to(game.roomCode).emit('player_ready_changed', { 
           playerId, 
-          ready: player.isReady 
+          ready: newReadyState  // Use the new state, not the old one
         });
         io.to(game.roomCode).emit('state_update', { gameState: game });
       }

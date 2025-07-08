@@ -11,7 +11,7 @@ import GameScreen from './screens/GameScreen';
 import EndScreen from './screens/EndScreen';
 
 function App() {
-  const { gameState, roomCode } = useGameStore();
+  const { gameState, roomCode, loading } = useGameStore();
 
   useEffect(() => {
     // Connect to socket on app mount
@@ -28,7 +28,12 @@ function App() {
       return <Navigate to="/" />;
     }
 
+    // If we have roomCode but no gameState yet, and we're loading, don't navigate
+    // This prevents navigation away during game creation
     if (!gameState) {
+      if (loading) {
+        return null; // Stay on current screen while loading
+      }
       return <Navigate to="/" />;
     }
 
