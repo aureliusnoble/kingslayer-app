@@ -1,11 +1,8 @@
-import { io, Socket } from 'socket.io-client';
-import { ClientToServerEvents, ServerToClientEvents } from 'kingslayer-shared';
+import { io } from 'socket.io-client';
 import { useGameStore } from '../stores/gameStore';
 
-type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
-
 class SocketService {
-  private socket: TypedSocket | null = null;
+  private socket: any = null;
   
   connect(): void {
     if (this.socket?.connected) return;
@@ -45,55 +42,55 @@ class SocketService {
       store.setConnected(false);
     });
     
-    this.socket.on('game_created', ({ roomCode, playerId }) => {
-      store.setRoomCode(roomCode);
-      store.setPlayerId(playerId);
+    this.socket.on('game_created', (data: any) => {
+      store.setRoomCode(data.roomCode);
+      store.setPlayerId(data.playerId);
     });
     
-    this.socket.on('game_joined', ({ gameState, playerId }) => {
-      store.setGameState(gameState);
-      store.setPlayerId(playerId);
-      store.setRoomCode(gameState.roomCode);
+    this.socket.on('game_joined', (data: any) => {
+      store.setGameState(data.gameState);
+      store.setPlayerId(data.playerId);
+      store.setRoomCode(data.gameState.roomCode);
     });
     
-    this.socket.on('state_update', ({ gameState }) => {
-      store.setGameState(gameState);
+    this.socket.on('state_update', (data: any) => {
+      store.setGameState(data.gameState);
     });
     
-    this.socket.on('role_assigned', ({ role, servantKingId }) => {
-      store.setMyRole(role, servantKingId);
+    this.socket.on('role_assigned', (data: any) => {
+      store.setMyRole(data.role, data.servantKingId);
     });
     
-    this.socket.on('room_assignment', ({ room }) => {
-      store.setCurrentRoom(room);
+    this.socket.on('room_assignment', (data: any) => {
+      store.setCurrentRoom(data.room);
       store.setRoomChangeRequired(true);
     });
     
-    this.socket.on('error', ({ message }) => {
-      store.setError(message);
+    this.socket.on('error', (data: any) => {
+      store.setError(data.message);
       store.setLoading(false);
     });
     
-    this.socket.on('timer_update', ({ room0Timer, room1Timer }) => {
+    this.socket.on('timer_update', (data: any) => {
       const gameState = store.gameState;
       if (gameState) {
         store.setGameState({
           ...gameState,
           timers: {
-            room0LeaderCooldown: room0Timer,
-            room1LeaderCooldown: room1Timer,
+            room0LeaderCooldown: data.room0Timer,
+            room1LeaderCooldown: data.room1Timer,
           }
         });
       }
     });
     
-    this.socket.on('game_ended', ({ winner, reason }) => {
+    this.socket.on('game_ended', (data: any) => {
       const gameState = store.gameState;
       if (gameState) {
         store.setGameState({
           ...gameState,
           phase: 'ended',
-          victory: { winner, reason }
+          victory: { winner: data.winner, reason: data.reason }
         });
       }
     });

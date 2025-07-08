@@ -6,7 +6,6 @@ import RoleCard from '../components/game/RoleCard';
 import PlayerList from '../components/game/PlayerList';
 import Modal from '../components/common/Modal';
 import Button from '../components/common/Button';
-import clsx from 'clsx';
 
 export default function GameScreen() {
   const { 

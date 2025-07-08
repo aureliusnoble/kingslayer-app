@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { GameState, Player, Role, GamePhase } from 'kingslayer-shared';
+import { GameState, Player, Role } from '../shared';
 
 interface GameStore {
   // Connection state
@@ -78,7 +78,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!gameState) return [];
     
     const playerIds = gameState.rooms[currentRoom].players;
-    return playerIds.map(id => gameState.players[id]).filter(Boolean);
+    return playerIds.map((id: string) => gameState.players[id]).filter(Boolean) as Player[];
   },
   
   getOtherRoomPlayerCount: () => {

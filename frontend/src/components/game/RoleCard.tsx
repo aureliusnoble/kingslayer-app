@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Role } from 'kingslayer-shared';
+import { Role } from '../../shared';
 import clsx from 'clsx';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
@@ -29,7 +29,7 @@ export default function RoleCard({ role, canAssassinate = false, hasUsedAbility 
   const [showSwordsmithSelect, setShowSwordsmithSelect] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
   
-  const { gameState, currentRoom, getPlayersInMyRoom } = useGameStore();
+  const { gameState, getPlayersInMyRoom } = useGameStore();
   
   const displayRole = role.fakeRole || role;
   const playersInRoom = getPlayersInMyRoom();

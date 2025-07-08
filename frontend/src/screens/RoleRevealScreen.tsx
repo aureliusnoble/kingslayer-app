@@ -3,7 +3,7 @@ import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import { socketService } from '../services/socket';
 import { useGameStore } from '../stores/gameStore';
-import { RoleType } from 'kingslayer-shared';
+import { RoleType } from '../shared';
 import clsx from 'clsx';
 
 const roleInfo: Record<RoleType, string> = {

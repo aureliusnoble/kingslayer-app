@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import Button from '../components/common/Button';
 import { socketService } from '../services/socket';
 import { useGameStore } from '../stores/gameStore';
+import { Player } from '../shared';
 import clsx from 'clsx';
 
 export default function LobbyScreen() {
@@ -11,7 +12,7 @@ export default function LobbyScreen() {
   if (!gameState) return null;
 
   const players = Object.values(gameState.players);
-  const allReady = players.every(p => p.isReady);
+  const allReady = players.every((p: Player) => p.isReady);
   const canStart = amIHost() && allReady && players.length === gameState.playerCount;
 
   const handleCopyCode = () => {

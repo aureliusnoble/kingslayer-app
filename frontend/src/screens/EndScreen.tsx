@@ -3,6 +3,7 @@ import { useGameStore } from '../stores/gameStore';
 import Button from '../components/common/Button';
 import clsx from 'clsx';
 import { socketService } from '../services/socket';
+import { Player } from '../shared';
 
 export default function EndScreen() {
   const navigate = useNavigate();
@@ -43,7 +44,7 @@ export default function EndScreen() {
         <div className="bg-neutral-light rounded-lg p-4">
           <h3 className="font-semibold mb-3">Final Roles:</h3>
           <div className="space-y-2 text-sm">
-            {players.map(player => (
+            {players.map((player: Player) => (
               <div 
                 key={player.id} 
                 className={clsx(

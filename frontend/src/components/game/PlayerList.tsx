@@ -1,4 +1,4 @@
-import { Player } from 'kingslayer-shared';
+import { Player } from '../../shared';
 import clsx from 'clsx';
 import { socketService } from '../../services/socket';
 import { useGameStore } from '../../stores/gameStore';
@@ -14,7 +14,7 @@ export default function PlayerList({
   showPointing = true,
   showLeaderControls = false 
 }: PlayerListProps) {
-  const { playerId, getMyPlayer, amILeader, gameState } = useGameStore();
+  const { playerId, getMyPlayer, amILeader } = useGameStore();
   const myPlayer = getMyPlayer();
 
   const handlePoint = (targetId: string) => {

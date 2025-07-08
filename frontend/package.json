@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "node scripts/copy-shared.cjs && tsc && vite build",
+    "build:local": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },
@@ -15,8 +16,7 @@
     "react-router-dom": "^6.24.1",
     "socket.io-client": "^4.7.5",
     "zustand": "^4.5.4",
-    "clsx": "^2.1.1",
-    "kingslayer-shared": "file:../shared"
+    "clsx": "^2.1.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
