@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import Button from '../components/common/Button';
 import { socketService } from '../services/socket';
 import { useGameStore } from '../stores/gameStore';
@@ -34,6 +35,13 @@ export default function LobbyScreen() {
       socketService.startGame();
     }
   };
+
+  // Navigate to role reveal when game starts
+  useEffect(() => {
+    if (gameState && gameState.phase === 'setup') {
+      navigate('/role');
+    }
+  }, [gameState, navigate]);
 
   return (
     <div className="min-h-screen flex flex-col p-6 safe-top safe-bottom">
