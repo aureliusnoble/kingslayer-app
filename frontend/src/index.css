@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;700&family=Cinzel:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -11,7 +11,7 @@
   }
 
   body {
-    @apply bg-neutral-light text-neutral-dark;
+    @apply bg-surface-dark text-white;
   }
 
   /* Ensure proper height on mobile browsers */
@@ -68,6 +68,194 @@
   .code-input {
     @apply w-12 h-12 text-center text-xl font-bold border-2 border-neutral-medium rounded
            focus:outline-none focus:border-neutral-dark;
+  }
+
+  /* Medieval button variants */
+  .btn-medieval {
+    @apply px-6 py-3 font-semibold rounded-lg transition-all duration-200 transform
+           shadow-medieval hover:shadow-medieval-hover active:shadow-medieval-pressed
+           active:animate-button-press disabled:opacity-50 disabled:cursor-not-allowed;
+    background: linear-gradient(135deg, var(--tw-gradient-stops));
+    border: 2px solid theme('colors.medieval.metal.gold');
+  }
+
+  .btn-medieval-red {
+    @apply btn-medieval text-white;
+    --tw-gradient-from: theme('colors.red.primary');
+    --tw-gradient-to: theme('colors.red.secondary');
+  }
+
+  .btn-medieval-blue {
+    @apply btn-medieval text-white;
+    --tw-gradient-from: theme('colors.blue.primary');
+    --tw-gradient-to: theme('colors.blue.secondary');
+  }
+
+  .btn-medieval-gold {
+    @apply btn-medieval text-surface-dark;
+    --tw-gradient-from: theme('colors.medieval.metal.gold');
+    --tw-gradient-to: theme('colors.medieval.metal.copper');
+  }
+
+  .btn-medieval-stone {
+    @apply btn-medieval text-white;
+    --tw-gradient-from: theme('colors.medieval.stone.medium');
+    --tw-gradient-to: theme('colors.medieval.stone.dark');
+    border-color: theme('colors.medieval.stone.light');
+  }
+
+  /* Medieval role cards */
+  .role-card-medieval {
+    @apply relative p-6 rounded-lg shadow-medieval;
+    background: theme('colors.surface.medium');
+  }
+
+  .role-card-medieval-red {
+    @apply role-card-medieval;
+    border: 8px solid theme('colors.red.primary');
+    box-shadow: 
+      0 8px 24px rgba(0,0,0,0.4),
+      inset 0 1px 0 rgba(255,255,255,0.1),
+      0 0 20px rgba(185, 28, 28, 0.3);
+  }
+
+  .role-card-medieval-blue {
+    @apply role-card-medieval;
+    border: 8px solid theme('colors.blue.primary');
+    box-shadow: 
+      0 8px 24px rgba(0,0,0,0.4),
+      inset 0 1px 0 rgba(255,255,255,0.1),
+      0 0 20px rgba(30, 64, 175, 0.3);
+  }
+
+  /* Medieval input variants */
+  .input-parchment {
+    @apply w-full px-4 py-3 rounded-lg border-2 transition-all duration-200
+           focus:outline-none text-medieval-stone-dark;
+    background: linear-gradient(135deg, theme('colors.medieval.parchment'), #fef7cd);
+    border-color: theme('colors.medieval.metal.copper');
+  }
+
+  .input-parchment:focus {
+    border-color: theme('colors.medieval.metal.gold');
+    box-shadow: 0 0 12px rgba(217, 119, 6, 0.3);
+  }
+
+  .input-stone {
+    @apply w-full px-4 py-3 rounded-lg border-2 transition-all duration-200
+           focus:outline-none text-white;
+    background: linear-gradient(135deg, theme('colors.medieval.stone.medium'), theme('colors.medieval.stone.dark'));
+    border-color: theme('colors.medieval.stone.light');
+  }
+
+  .input-stone:focus {
+    border-color: theme('colors.medieval.metal.gold');
+    box-shadow: 0 0 12px rgba(217, 119, 6, 0.3);
+  }
+
+  .input-metal {
+    @apply w-full px-4 py-3 rounded-lg border-2 transition-all duration-200
+           focus:outline-none text-white;
+    background: linear-gradient(135deg, theme('colors.medieval.metal.copper'), theme('colors.medieval.stone.dark'));
+    border-color: theme('colors.medieval.metal.gold');
+  }
+
+  .input-metal:focus {
+    border-color: theme('colors.medieval.flame.yellow');
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
+  }
+
+  /* Medieval Icon Styling */
+  .medieval-icon {
+    @apply transition-all duration-200 drop-shadow-sm;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+  }
+
+  .medieval-icon:hover {
+    @apply transform scale-110;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+  }
+
+  .medieval-icon-gold {
+    @apply medieval-icon;
+    color: theme('colors.medieval.metal.gold');
+    filter: drop-shadow(0 0 4px rgba(217, 119, 6, 0.4));
+  }
+
+  .medieval-icon-copper {
+    @apply medieval-icon;
+    color: theme('colors.medieval.metal.copper');
+    filter: drop-shadow(0 0 4px rgba(194, 65, 12, 0.4));
+  }
+
+  .medieval-icon-flame {
+    @apply medieval-icon animate-pulse;
+    color: theme('colors.medieval.flame.yellow');
+    filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.6));
+  }
+
+  /* Medieval Background Textures */
+  .texture-parchment {
+    background-image: 
+      radial-gradient(circle at 20% 30%, rgba(139, 69, 19, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(101, 67, 33, 0.1) 0%, transparent 50%),
+      linear-gradient(135deg, theme('colors.medieval.parchment'), #fef7cd);
+  }
+
+  .texture-stone {
+    background-image: 
+      radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, rgba(0, 0, 0, 0.1) 0%, transparent 50%),
+      linear-gradient(135deg, theme('colors.medieval.stone.medium'), theme('colors.medieval.stone.dark'));
+  }
+
+  .texture-metal {
+    background-image: 
+      linear-gradient(45deg, transparent 25%, rgba(255, 255, 255, 0.1) 25%, rgba(255, 255, 255, 0.1) 50%, transparent 50%),
+      linear-gradient(135deg, theme('colors.medieval.metal.copper'), theme('colors.medieval.stone.dark'));
+    background-size: 20px 20px;
+  }
+
+  /* Enhanced Animation Classes */
+  .medieval-glow {
+    animation: medievalGlow 2s ease-in-out infinite alternate;
+  }
+
+  @keyframes medievalGlow {
+    0% {
+      filter: drop-shadow(0 0 8px rgba(217, 119, 6, 0.4));
+    }
+    100% {
+      filter: drop-shadow(0 0 16px rgba(217, 119, 6, 0.8));
+    }
+  }
+
+  .medieval-float {
+    animation: medievalFloat 3s ease-in-out infinite;
+  }
+
+  @keyframes medievalFloat {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  .medieval-sparkle {
+    animation: medievalSparkle 1.5s ease-in-out infinite;
+  }
+
+  @keyframes medievalSparkle {
+    0%, 100% {
+      opacity: 0.8;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.1);
+    }
   }
 }
 

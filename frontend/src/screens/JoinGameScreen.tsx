@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import Button from '../components/common/Button';
 import { socketService } from '../services/socket';
 import { useGameStore } from '../stores/gameStore';
+import MedievalBackground from '../components/common/MedievalBackground';
+import MedievalInput from '../components/common/MedievalInput';
+import CodeInput from '../components/common/CodeInput';
+import { ChevronLeft, DoorOpen, ClipboardCheck, AlertTriangle } from 'lucide-react';
 
 export default function JoinGameScreen() {
   const navigate = useNavigate();
@@ -11,9 +15,7 @@ export default function JoinGameScreen() {
   const [roomCode, setRoomCode] = useState('');
 
   const handleCodeChange = (value: string) => {
-    // Only allow alphanumeric characters and limit to 6 characters
-    const cleanValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
-    setRoomCode(cleanValue);
+    setRoomCode(value); // CodeInput component handles validation
   };
 
   const handleJoinGame = () => {
@@ -22,17 +24,6 @@ export default function JoinGameScreen() {
     socketService.joinGame(roomCode, playerName.trim());
   };
 
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    const pastedText = e.clipboardData.getData('text');
-    handleCodeChange(pastedText);
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && roomCode.length === 6 && playerName.trim()) {
-      handleJoinGame();
-    }
-  };
 
   // Navigate to lobby when game is joined successfully
   useEffect(() => {
@@ -41,79 +32,102 @@ export default function JoinGameScreen() {
     }
   }, [storeRoomCode, gameState, loading, navigate]);
 
+  const handlePasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      handleCodeChange(text);
+    } catch (err) {
+      console.error('Failed to read clipboard:', err);
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col p-6 safe-top safe-bottom">
-      <div className="flex items-center mb-8">
-        <button
-          onClick={() => navigate('/')}
-          className="text-neutral-dark"
-        >
-          ← Back
-        </button>
-        <h1 className="text-2xl font-bold flex-1 text-center">JOIN GAME</h1>
-        <div className="w-12" />
-      </div>
-
-      <div className="flex-1 max-w-sm mx-auto w-full space-y-6">
-        <div>
-          <label className="block text-sm font-medium mb-2">Your Name:</label>
-          <input
-            type="text"
-            value={playerName}
-            onChange={(e) => setPlayerName(e.target.value)}
-            maxLength={20}
-            placeholder="Enter your name"
-            className="input-field"
-          />
+    <MedievalBackground variant="battlements">
+      <div className="min-h-screen flex flex-col p-6 safe-top safe-bottom">
+        {/* Header */}
+        <div className="flex items-center mb-8">
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 text-white hover:text-medieval-metal-gold transition-colors"
+          >
+            <ChevronLeft size={20} />
+            <span>Back</span>
+          </button>
+          <h1 className="text-2xl font-bold flex-1 text-center text-white font-display">
+            JOIN GAME
+          </h1>
+          <div className="w-16" />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-2">Room Code:</label>
-          <input
-            type="text"
-            value={roomCode}
-            onChange={(e) => handleCodeChange(e.target.value)}
-            onPaste={handlePaste}
-            onKeyPress={handleKeyPress}
-            placeholder="ABCD12"
-            className="input-field text-center text-2xl font-mono tracking-widest uppercase placeholder:text-base placeholder:text-neutral-medium"
-            maxLength={6}
-            autoFocus
-            autoComplete="off"
-            autoCapitalize="characters"
-            spellCheck={false}
-          />
-          <p className="text-xs text-neutral-medium mt-1 text-center">
-            You can type or paste the room code
-          </p>
-        </div>
+        <div className="flex-1 max-w-sm mx-auto w-full space-y-6">
+          {/* Name Input */}
+          <div className="space-y-2">
+            <label className="text-lg font-semibold text-medieval-metal-gold drop-shadow-md">
+              Your Name:
+            </label>
+            <MedievalInput
+              variant="parchment"
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              maxLength={20}
+              placeholder="Enter your name"
+            />
+          </div>
 
-        {error && (
-          <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">
-            <div className="flex items-start gap-2">
-              <span className="text-red-500">⚠️</span>
-              <div>
-                <p className="font-medium">{error}</p>
-                {error.includes('name is already taken') && (
-                  <p className="text-xs mt-1 text-red-600">
-                    Try adding a number or changing your name slightly.
-                  </p>
-                )}
+          {/* Room Code Input */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <DoorOpen size={24} className="text-medieval-metal-gold" />
+              <label className="text-lg font-semibold text-medieval-metal-gold drop-shadow-md">Room Code:</label>
+            </div>
+            
+            <CodeInput
+              value={roomCode}
+              onChange={handleCodeChange}
+              autoFocus
+              className="mb-4"
+            />
+
+            {/* Paste Button */}
+            <button
+              onClick={handlePasteFromClipboard}
+              className="flex items-center gap-2 mx-auto px-4 py-2 text-sm text-medieval-stone-light hover:text-medieval-metal-gold transition-colors font-medium"
+            >
+              <ClipboardCheck size={16} />
+              <span>Paste Code</span>
+            </button>
+          </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="p-3 bg-red-primary bg-opacity-20 text-red-highlight rounded-lg text-sm border border-red-primary">
+              <div className="flex items-start gap-2">
+                <AlertTriangle size={16} className="text-red-highlight mt-0.5" />
+                <div>
+                  <p className="font-medium">{error}</p>
+                  {error.includes('name is already taken') && (
+                    <p className="text-xs mt-1 text-red-highlight opacity-80">
+                      Try adding a number or changing your name slightly.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <Button
-          variant="primary"
-          size="large"
-          fullWidth
-          onClick={handleJoinGame}
-          disabled={loading || roomCode.length !== 6 || !playerName.trim()}
-        >
-          {loading ? 'Joining...' : 'JOIN ROOM'}
-        </Button>
+          {/* Join Button */}
+          <Button
+            variant="medieval-blue"
+            size="large"
+            fullWidth
+            onClick={handleJoinGame}
+            disabled={loading || roomCode.length !== 6 || !playerName.trim()}
+            className="text-lg font-bold bg-blue-primary bg-opacity-90 border-2 border-blue-primary shadow-lg"
+          >
+            {loading ? 'Joining...' : 'JOIN ROOM'}
+          </Button>
+        </div>
       </div>
-    </div>
+    </MedievalBackground>
   );
 }

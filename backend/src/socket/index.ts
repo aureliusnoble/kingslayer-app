@@ -126,6 +126,9 @@ export function setupSocketHandlers(io: any) {
         socket.to(game.roomCode).emit('player_joined', { 
           player: game.players[playerId] 
         });
+        
+        // Send updated game state to all players in the room
+        io.to(game.roomCode).emit('state_update', { gameState: game });
       } catch (error) {
         socket.emit('error', { 
           message: 'Invalid game code or name', 
@@ -424,6 +427,22 @@ export function setupSocketHandlers(io: any) {
       const game = gameManager.getGameByPlayerId(playerId);
       if (game) {
         socket.emit('state_update', { gameState: game });
+      }
+    });
+
+    socket.on('reconnect_game', (data: any) => {
+      const { playerId, roomCode } = data;
+      if (!playerId || !roomCode) return;
+
+      const game = gameManager.reconnectPlayer(playerId, socket.id);
+      if (game) {
+        socketToPlayer.set(socket.id, playerId);
+        socket.join(game.roomCode);
+        socket.emit('game_joined', { gameState: game, playerId });
+        socket.emit('state_update', { gameState: game });
+        
+        // Notify others that player reconnected
+        socket.to(game.roomCode).emit('state_update', { gameState: game });
       }
     });
 

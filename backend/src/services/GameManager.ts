@@ -330,7 +330,7 @@ export class GameManager {
     const room = game.rooms[roomIndex];
 
     // Remove previous leader if any
-    if (room.leaderId) {
+    if (room.leaderId && game.players[room.leaderId]) {
       game.players[room.leaderId].isLeader = false;
     }
 
@@ -438,6 +438,19 @@ export class GameManager {
     const player = game.players[playerId];
     if (player) {
       player.connected = false;
+    }
+
+    return game;
+  }
+
+  reconnectPlayer(playerId: string, socketId: string): GameState | null {
+    const game = this.getGameByPlayerId(playerId);
+    if (!game) return null;
+
+    const player = game.players[playerId];
+    if (player) {
+      player.connected = true;
+      player.socketId = socketId;
     }
 
     return game;

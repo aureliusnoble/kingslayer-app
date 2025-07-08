@@ -2,6 +2,7 @@ import { Player } from '../../shared';
 import clsx from 'clsx';
 import { socketService } from '../../services/socket';
 import { useGameStore } from '../../stores/gameStore';
+import { Crown, Clock } from 'lucide-react';
 
 interface PlayerListProps {
   players: Player[];
@@ -51,29 +52,29 @@ export default function PlayerList({
           <div
             key={player.id}
             className={clsx(
-              'p-3 rounded-lg flex items-center justify-between',
-              isMe ? 'bg-blue-background' : 'bg-neutral-light',
-              showPointing && !isMe && 'cursor-pointer hover:bg-neutral-medium hover:bg-opacity-20'
+              'p-3 rounded-lg flex items-center justify-between border border-medieval-stone-light transition-colors',
+              isMe ? 'bg-medieval-metal-gold bg-opacity-20 border-medieval-metal-gold' : 'bg-surface-light',
+              showPointing && !isMe && 'cursor-pointer hover:bg-surface-medium'
             )}
             onClick={() => !isMe && handlePoint(player.id)}
           >
             <div className="flex items-center gap-2">
-              <span className="font-medium">
-                {player.name} {isMe && '(You)'}
+              <span className="font-medium text-white">
+                {player.name} {isMe && <span className="text-medieval-metal-gold">(You)</span>}
               </span>
-              {player.isLeader && <span title="Leader">👑</span>}
-              {!player.connected && <span className="text-neutral-medium text-sm">⏳</span>}
+              {player.isLeader && <span title="Leader"><Crown size={16} className="text-medieval-metal-gold" /></span>}
+              {!player.connected && <span title="Connecting..."><Clock size={16} className="text-medieval-flame-yellow animate-pulse" /></span>}
             </div>
             
             <div className="flex items-center gap-2">
               {pointCount > 0 && (
-                <span className="text-sm text-neutral-medium">
+                <span className="text-sm text-medieval-metal-gold font-bold">
                   {'← '.repeat(pointCount)}
                 </span>
               )}
               
               {myPlayer?.pointingAt === player.id && (
-                <span className="text-blue-primary">←</span>
+                <span className="text-medieval-metal-gold text-lg font-bold">←</span>
               )}
               
               {showLeaderControls && amILeader() && !isMe && (

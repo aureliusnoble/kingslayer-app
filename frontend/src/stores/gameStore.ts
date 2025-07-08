@@ -17,6 +17,7 @@ interface GameStore {
   // UI state
   error: string | null;
   loading: boolean;
+  reconnecting: boolean;
   
   // Live timer state
   liveTimers: {
@@ -41,6 +42,7 @@ interface GameStore {
   setRoomChangeRequired: (required: boolean) => void;
   setError: (error: string | null) => void;
   setLoading: (loading: boolean) => void;
+  setReconnecting: (reconnecting: boolean) => void;
   setLiveTimer: (room: 0 | 1, seconds: number | null) => void;
   updateLiveTimers: () => void; // called every second
   setRoomConfirmationProgress: (progress: { confirmed: number; total: number; names: string[] } | null) => void;
@@ -66,6 +68,7 @@ const initialState = {
   roomChangeRequired: false,
   error: null,
   loading: false,
+  reconnecting: false,
   liveTimers: { room0: null, room1: null },
   roomConfirmationProgress: null,
 };
@@ -82,6 +85,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setRoomChangeRequired: (required) => set({ roomChangeRequired: required }),
   setError: (error) => set({ error }),
   setLoading: (loading) => set({ loading }),
+  setReconnecting: (reconnecting) => set({ reconnecting }),
   
   setLiveTimer: (room, seconds) => set(state => {
     const newTimers = { ...state.liveTimers, [room === 0 ? 'room0' : 'room1']: seconds };

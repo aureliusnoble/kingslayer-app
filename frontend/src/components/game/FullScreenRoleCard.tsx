@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Role } from '../../shared';
 import clsx from 'clsx';
 import Button from '../common/Button';
+import { Crown, Swords, DoorClosed, Hammer, Shield, UserX, Bell, Eye } from 'lucide-react';
 
 interface FullScreenRoleCardProps {
   role: Role;
@@ -11,14 +12,17 @@ interface FullScreenRoleCardProps {
 
 type RevealStage = 'eye' | 'full';
 
-const roleIcons: Record<string, string> = {
-  KING: '👑',
-  ASSASSIN: '🗡️', 
-  GATEKEEPER: '🚪',
-  SWORDSMITH: '⚔️',
-  GUARD: '🛡️',
-  SPY: '🕵️',
-  SERVANT: '🙇'
+const getRoleIcon = (roleType: string) => {
+  switch (roleType) {
+    case 'KING': return <Crown size={120} className="text-white mx-auto" />;
+    case 'ASSASSIN': return <Swords size={120} className="text-white mx-auto" />;
+    case 'GATEKEEPER': return <DoorClosed size={120} className="text-white mx-auto" />;
+    case 'SWORDSMITH': return <Hammer size={120} className="text-white mx-auto" />;
+    case 'GUARD': return <Shield size={120} className="text-white mx-auto" />;
+    case 'SPY': return <UserX size={120} className="text-white mx-auto" />;
+    case 'SERVANT': return <Bell size={120} className="text-white mx-auto" />;
+    default: return <Crown size={120} className="text-white mx-auto" />;
+  }
 };
 
 export default function FullScreenRoleCard({ role, isVisible, onClose }: FullScreenRoleCardProps) {
@@ -50,9 +54,10 @@ export default function FullScreenRoleCard({ role, isVisible, onClose }: FullScr
   return (
     <div 
       className={clsx(
-        'fixed inset-0 z-50 flex flex-col items-center justify-center',
+        'fixed inset-0 z-50 flex flex-col items-center justify-center cursor-pointer',
         teamColor
       )}
+      onClick={handleEyeClick}
     >
       {/* Thick team-colored border at edge of screen */}
       <div className={clsx(
@@ -68,9 +73,9 @@ export default function FullScreenRoleCard({ role, isVisible, onClose }: FullScr
           <div className="text-center">
             <button
               onClick={handleEyeClick}
-              className="text-8xl hover:scale-110 transition-transform duration-200 active:scale-95"
+              className="hover:scale-110 transition-transform duration-200 active:scale-95 p-4"
             >
-              👁️
+              <Eye size={120} className="text-white" />
             </button>
             <p className="text-lg mt-4 opacity-80">Tap to reveal role</p>
           </div>
@@ -80,8 +85,8 @@ export default function FullScreenRoleCard({ role, isVisible, onClose }: FullScr
         {revealStage === 'full' && (
           <div className="text-center space-y-6">
             {/* Smaller role icon */}
-            <div className="text-[120px] leading-none">
-              {roleIcons[displayRole.type]}
+            <div className="leading-none">
+              {getRoleIcon(displayRole.type)}
             </div>
             
             {/* Smaller role text */}
@@ -106,7 +111,7 @@ export default function FullScreenRoleCard({ role, isVisible, onClose }: FullScr
       </div>
       
       {/* Back button at bottom - always visible */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20">
+      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20" onClick={(e) => e.stopPropagation()}>
         <Button
           variant="secondary"
           size="large"

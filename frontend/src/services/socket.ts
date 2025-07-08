@@ -54,6 +54,18 @@ class SocketService {
       console.log(`🔄 Reset game lifecycle flags - gameHasStarted: ${gameHasStarted}, playingPhaseReached: ${playingPhaseReached}`);
       store.setConnected(true);
       store.setError(null);
+      
+      // Handle reconnection - if we have game state, reconnect to the game
+      const currentStore = useGameStore.getState();
+      if (currentStore.roomCode && currentStore.playerId) {
+        console.log('🔄 Reconnecting to game:', currentStore.roomCode);
+        // Set reconnecting state to prevent premature navigation
+        currentStore.setReconnecting(true);
+        // Reconnect to the game with existing playerId
+        setTimeout(() => {
+          this.reconnectGame(currentStore.playerId, currentStore.roomCode);
+        }, 100);
+      }
     });
     
     this.socket.on('disconnect', () => {
@@ -74,6 +86,19 @@ class SocketService {
       store.setPlayerId(data.playerId);
       store.setRoomCode(data.gameState.roomCode);
       store.setLoading(false);
+      store.setReconnecting(false); // Clear reconnecting state
+    });
+
+    this.socket.on('player_joined', (data: any) => {
+      debugLog('player_joined', { playerName: data.player.name, playerId: data.player.id });
+      // Note: state_update event will handle the actual UI update
+      // This event is mainly for potential future notifications/animations
+    });
+
+    this.socket.on('player_left', (data: any) => {
+      debugLog('player_left', { playerId: data.playerId });
+      // Note: state_update event will handle the actual UI update
+      // This event is mainly for potential future notifications/animations
     });
     
     this.socket.on('state_update', (data: any) => {
@@ -207,6 +232,7 @@ class SocketService {
     this.socket.on('error', (data: any) => {
       store.setError(data.message);
       store.setLoading(false);
+      store.setReconnecting(false); // Clear reconnecting state on error
     });
     
     this.socket.on('timer_update', (data: any) => {
@@ -330,6 +356,12 @@ class SocketService {
   requestState(): void {
     if (!this.socket) return;
     this.socket.emit('request_state');
+  }
+
+  reconnectGame(playerId: string, roomCode: string): void {
+    if (!this.socket) return;
+    console.log('🔄 Attempting to reconnect to game:', { playerId, roomCode });
+    this.socket.emit('reconnect_game', { playerId, roomCode });
   }
 }
 
