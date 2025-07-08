@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import { socketService } from '../services/socket';
 import { useTimer } from '../hooks/useTimer';
-import Timer from '../components/common/Timer';
 import RoleCard from '../components/game/RoleCard';
 import PlayerList from '../components/game/PlayerList';
 import Modal from '../components/common/Modal';
@@ -47,7 +46,6 @@ export default function GameScreen() {
   const otherRoomName = currentRoom === 0 ? 'B' : 'A';
   const myRoomTimer = liveTimers[currentRoom === 0 ? 'room0' : 'room1'];
   const otherRoomTimer = liveTimers[currentRoom === 0 ? 'room1' : 'room0'];
-  const canKick = amILeader() && (myRoomTimer === null || myRoomTimer === 0);
 
   // Timer display helper
   const renderTimer = (timer: number | null, label: string) => {

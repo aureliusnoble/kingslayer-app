@@ -14,7 +14,7 @@ export default function PlayerList({
   showPointing = true,
   showLeaderControls = false 
 }: PlayerListProps) {
-  const { playerId, getMyPlayer, amILeader, gameState, liveTimers, currentRoom } = useGameStore();
+  const { playerId, getMyPlayer, amILeader, liveTimers, currentRoom } = useGameStore();
   const myPlayer = getMyPlayer();
   
   // Check if kicks are available (timer = 0)

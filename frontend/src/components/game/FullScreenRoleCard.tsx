@@ -24,7 +24,6 @@ export default function FullScreenRoleCard({ role, isVisible, onClose }: FullScr
   // Use true role (not fake role for spies) when showing to others
   const displayRole = role;
   const teamColor = displayRole.team === 'RED' ? 'bg-red-primary' : 'bg-blue-primary';
-  const teamColorLight = displayRole.team === 'RED' ? 'bg-red-background' : 'bg-blue-background';
 
   return (
     <div className={clsx(
