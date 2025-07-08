@@ -17,6 +17,7 @@ export class GameManager {
       currentRoom: 0,
       isHost: true,
       isReady: false,
+      isRoleReady: false,
       hasUsedAbility: false,
       isLeader: false
     };
@@ -42,12 +43,18 @@ export class GameManager {
     return { game, playerId };
   }
 
-  joinGame(roomCode: string, playerName: string, socketId: string): { game: GameState; playerId: string } | null {
+  joinGame(roomCode: string, playerName: string, socketId: string): { success: true; game: GameState; playerId: string } | { success: false; error: 'GAME_NOT_FOUND' | 'GAME_FULL' | 'NAME_TAKEN' } {
     const game = this.games.get(roomCode.toUpperCase());
-    if (!game) return null;
+    if (!game) return { success: false, error: 'GAME_NOT_FOUND' };
 
     const playerIds = Object.keys(game.players);
-    if (playerIds.length >= game.playerCount) return null;
+    if (playerIds.length >= game.playerCount) return { success: false, error: 'GAME_FULL' };
+
+    // Check for duplicate names (case-insensitive)
+    const existingNames = Object.values(game.players).map(p => p.name.toLowerCase());
+    if (existingNames.includes(playerName.toLowerCase())) {
+      return { success: false, error: 'NAME_TAKEN' };
+    }
 
     const playerId = generatePlayerId();
     const player: Player = {
@@ -58,6 +65,7 @@ export class GameManager {
       currentRoom: 0,
       isHost: false,
       isReady: false,
+      isRoleReady: false,
       hasUsedAbility: false,
       isLeader: false
     };
@@ -65,7 +73,7 @@ export class GameManager {
     game.players[playerId] = player;
     this.playerToGame.set(playerId, roomCode);
 
-    return { game, playerId };
+    return { success: true, game, playerId };
   }
 
   leaveGame(playerId: string): GameState | null {
@@ -108,6 +116,18 @@ export class GameManager {
     const player = game.players[playerId];
     if (player) {
       player.isReady = ready;
+    }
+
+    return game;
+  }
+
+  setPlayerRoleReady(playerId: string, ready: boolean): GameState | null {
+    const game = this.getGameByPlayerId(playerId);
+    if (!game || game.phase !== 'setup') return null;
+
+    const player = game.players[playerId];
+    if (player) {
+      player.isRoleReady = ready;
     }
 
     return game;
@@ -170,13 +190,25 @@ export class GameManager {
     const player = game.players[playerId];
     if (!player) return null;
 
-    // Check if all players have confirmed their rooms
+    // Check if all players have confirmed their rooms AND are role ready
     const allConfirmed = Object.values(game.players).every(p => 
       game.rooms[0].players.includes(p.id) || game.rooms[1].players.includes(p.id)
     );
+    
+    const allRoleReady = Object.values(game.players).every(p => p.isRoleReady);
 
-    if (allConfirmed) {
+    if (allConfirmed && allRoleReady && game.phase !== 'playing') {
+      // Only initialize timers when transitioning to playing phase for the first time
       game.phase = 'playing';
+      
+      // Initialize timers when game starts playing - 2 minutes (120 seconds)
+      const now = Date.now();
+      game.timers.room0LeaderCooldown = 120;
+      game.timers.room1LeaderCooldown = 120;
+      game.timers.room0TimerStarted = now;
+      game.timers.room1TimerStarted = now;
+      
+      console.log(`[GAME START] Game ${game.roomCode} entering playing phase with 120s timers`);
     }
 
     return game;
@@ -224,12 +256,7 @@ export class GameManager {
       room.leaderElectedAt = Date.now();
       game.players[newLeaderId].isLeader = true;
       
-      // Set timer
-      if (roomIndex === 0) {
-        game.timers.room0LeaderCooldown = 120; // 120 seconds
-      } else {
-        game.timers.room1LeaderCooldown = 120;
-      }
+      // Timer is independent of leader election - don't reset it here
     }
   }
 
@@ -243,7 +270,7 @@ export class GameManager {
     if (!leader || !target || !leader.isLeader) return null;
     if (leader.currentRoom !== target.currentRoom) return null;
 
-    // Check cooldown
+    // Check cooldown - leader can only kick when timer reaches 0
     const roomIndex = leader.currentRoom;
     const cooldownKey = roomIndex === 0 ? 'room0LeaderCooldown' : 'room1LeaderCooldown';
     if (game.timers[cooldownKey] && game.timers[cooldownKey]! > 0) return null;
@@ -255,6 +282,41 @@ export class GameManager {
     game.rooms[fromRoom].players = game.rooms[fromRoom].players.filter(id => id !== targetId);
     game.rooms[toRoom].players.push(targetId);
     target.currentRoom = toRoom;
+
+    // Reset kick timer after use (2 minutes = 120 seconds)
+    const now = Date.now();
+    if (roomIndex === 0) {
+      game.timers.room0LeaderCooldown = 120;
+      game.timers.room0TimerStarted = now;
+    } else {
+      game.timers.room1LeaderCooldown = 120;
+      game.timers.room1TimerStarted = now;
+    }
+
+    return game;
+  }
+
+  declareLeader(playerId: string): GameState | null {
+    const game = this.getGameByPlayerId(playerId);
+    if (!game || game.phase !== 'playing') return null;
+
+    const player = game.players[playerId];
+    if (!player) return null;
+
+    const roomIndex = player.currentRoom;
+    const room = game.rooms[roomIndex];
+
+    // Remove previous leader if any
+    if (room.leaderId) {
+      game.players[room.leaderId].isLeader = false;
+    }
+
+    // Set new leader
+    room.leaderId = playerId;
+    room.leaderElectedAt = Date.now();
+    player.isLeader = true;
+
+    console.log(`[LEADER DECLARATION] Player ${playerId} (${player.name}) declared leader in room ${roomIndex}`);
 
     return game;
   }
@@ -305,12 +367,20 @@ export class GameManager {
 
   updateTimers(): void {
     this.games.forEach(game => {
+      // Update room leader cooldowns for playing games
       if (game.phase === 'playing') {
+        const before = { room0: game.timers.room0LeaderCooldown, room1: game.timers.room1LeaderCooldown };
+        
         if (game.timers.room0LeaderCooldown && game.timers.room0LeaderCooldown > 0) {
           game.timers.room0LeaderCooldown--;
         }
         if (game.timers.room1LeaderCooldown && game.timers.room1LeaderCooldown > 0) {
           game.timers.room1LeaderCooldown--;
+        }
+        
+        const after = { room0: game.timers.room0LeaderCooldown, room1: game.timers.room1LeaderCooldown };
+        if (before.room0 !== after.room0 || before.room1 !== after.room1) {
+          console.log(`[TIMER UPDATE] Room ${game.roomCode}: Room0 ${before.room0} -> ${after.room0}, Room1 ${before.room1} -> ${after.room1}`);
         }
       }
     });

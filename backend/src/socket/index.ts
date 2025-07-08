@@ -33,12 +33,23 @@ export function setupSocketHandlers(io: any) {
   setInterval(() => {
     gameManager.updateTimers();
     
-    // Send timer updates to all games
+    // Send timer updates to all games and check for expiration
+    const processedGames = new Set();
     io.sockets.sockets.forEach((socket: any) => {
       const playerId = socketToPlayer.get(socket.id);
       if (playerId) {
         const game = gameManager.getGameByPlayerId(playerId);
-        if (game && game.phase === 'playing') {
+        if (game && game.phase === 'playing' && !processedGames.has(game.roomCode)) {
+          processedGames.add(game.roomCode);
+          
+          // Check for timer expiration and emit events
+          if (game.timers.room0LeaderCooldown === 0) {
+            io.to(game.roomCode).emit('timer_expired', { room: 0 });
+          }
+          if (game.timers.room1LeaderCooldown === 0) {
+            io.to(game.roomCode).emit('timer_expired', { room: 1 });
+          }
+          
           socket.emit('timer_update', {
             room0Timer: game.timers.room0LeaderCooldown,
             room1Timer: game.timers.room1LeaderCooldown
@@ -90,10 +101,16 @@ export function setupSocketHandlers(io: any) {
           socket.id
         );
 
-        if (!result) {
+        if (!result.success) {
+          const errorMessages = {
+            GAME_NOT_FOUND: 'Game not found. Please check the room code.',
+            GAME_FULL: 'Game is full. Cannot join.',
+            NAME_TAKEN: 'This name is already taken. Please choose a different name.'
+          };
+          
           socket.emit('error', { 
-            message: 'Game not found or full', 
-            code: 'JOIN_FAILED' 
+            message: errorMessages[result.error], 
+            code: result.error
           });
           return;
         }
@@ -147,6 +164,23 @@ export function setupSocketHandlers(io: any) {
         io.to(game.roomCode).emit('player_ready_changed', { 
           playerId, 
           ready: newReadyState  // Use the new state, not the old one
+        });
+        io.to(game.roomCode).emit('state_update', { gameState: game });
+      }
+    });
+
+    socket.on('player_role_ready', () => {
+      const playerId = socketToPlayer.get(socket.id);
+      debugLog('player_role_ready', { playerId }, socket.id);
+      if (!playerId) return;
+
+      const game = gameManager.setPlayerRoleReady(playerId, true);
+      
+      if (game) {
+        debugLog('player_role_ready_changed', { playerId, ready: true }, socket.id);
+        io.to(game.roomCode).emit('player_role_ready_changed', { 
+          playerId, 
+          ready: true
         });
         io.to(game.roomCode).emit('state_update', { gameState: game });
       }
@@ -219,12 +253,28 @@ export function setupSocketHandlers(io: any) {
       const playerId = socketToPlayer.get(socket.id);
       if (!playerId) return;
 
+      const gameBeforeConfirm = gameManager.getGameByPlayerId(playerId);
+      const wasPlaying = gameBeforeConfirm?.phase === 'playing';
+      
       const game = gameManager.confirmPlayerRoom(playerId, data.room);
       if (game) {
         io.to(game.roomCode).emit('room_confirmed', { playerId, room: data.room });
         
-        if (game.phase === 'playing') {
+        // Only emit timer events when transitioning to playing for the first time
+        if (game.phase === 'playing' && !wasPlaying) {
           io.to(game.roomCode).emit('phase_changed', { phase: 'playing' });
+          
+          // Emit timer started events for both rooms when game begins
+          io.to(game.roomCode).emit('timer_started', {
+            room: 0,
+            duration: 120,
+            startTime: game.timers.room0TimerStarted || Date.now()
+          });
+          io.to(game.roomCode).emit('timer_started', {
+            room: 1,
+            duration: 120,
+            startTime: game.timers.room1TimerStarted || Date.now()
+          });
         }
         
         io.to(game.roomCode).emit('state_update', { gameState: game });
@@ -260,6 +310,7 @@ export function setupSocketHandlers(io: any) {
       const game = gameManager.sendPlayer(playerId, data.targetId);
       if (game) {
         const target = game.players[data.targetId];
+        const leader = game.players[playerId];
         const fromRoom = target.currentRoom === 0 ? 1 : 0;
         
         io.to(game.roomCode).emit('player_sent', { 
@@ -273,6 +324,32 @@ export function setupSocketHandlers(io: any) {
         if (targetSocket) {
           targetSocket.emit('room_assignment', { room: target.currentRoom });
         }
+        
+        // After successful kick, emit timer start event
+        const roomIndex = leader.currentRoom;
+        io.to(game.roomCode).emit('timer_started', {
+          room: roomIndex,
+          duration: 120,
+          startTime: Date.now()
+        });
+        
+        io.to(game.roomCode).emit('state_update', { gameState: game });
+      }
+    });
+
+    socket.on('declare_leader', () => {
+      const playerId = socketToPlayer.get(socket.id);
+      if (!playerId) return;
+
+      const game = gameManager.declareLeader(playerId);
+      if (game) {
+        const player = game.players[playerId];
+        
+        // Notify all players about the leader declaration
+        io.to(game.roomCode).emit('leader_elected', { 
+          roomIndex: player.currentRoom, 
+          leaderId: playerId 
+        });
         
         io.to(game.roomCode).emit('state_update', { gameState: game });
       }

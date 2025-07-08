@@ -18,6 +18,12 @@ interface GameStore {
   error: string | null;
   loading: boolean;
   
+  // Live timer state
+  liveTimers: {
+    room0: number | null; // seconds remaining, null if not active
+    room1: number | null; // seconds remaining, null if not active
+  };
+  
   // Actions
   setConnected: (connected: boolean) => void;
   setRoomCode: (roomCode: string | null) => void;
@@ -28,6 +34,8 @@ interface GameStore {
   setRoomChangeRequired: (required: boolean) => void;
   setError: (error: string | null) => void;
   setLoading: (loading: boolean) => void;
+  setLiveTimer: (room: 0 | 1, seconds: number | null) => void;
+  updateLiveTimers: () => void; // called every second
   reset: () => void;
   
   // Computed getters
@@ -50,6 +58,7 @@ const initialState = {
   roomChangeRequired: false,
   error: null,
   loading: false,
+  liveTimers: { room0: null, room1: null },
 };
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -64,6 +73,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setRoomChangeRequired: (required) => set({ roomChangeRequired: required }),
   setError: (error) => set({ error }),
   setLoading: (loading) => set({ loading }),
+  
+  setLiveTimer: (room, seconds) => set(state => ({
+    liveTimers: { ...state.liveTimers, [room === 0 ? 'room0' : 'room1']: seconds }
+  })),
+
+  updateLiveTimers: () => set(state => {
+    const newTimers = { ...state.liveTimers };
+    if (newTimers.room0 !== null && newTimers.room0 > 0) {
+      newTimers.room0--;
+    }
+    if (newTimers.room1 !== null && newTimers.room1 > 0) {
+      newTimers.room1--;
+    }
+    return { liveTimers: newTimers };
+  }),
   
   reset: () => set(initialState),
   

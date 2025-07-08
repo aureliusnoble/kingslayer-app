@@ -97,6 +97,15 @@ class SocketService {
       }
     });
 
+    this.socket.on('player_role_ready_changed', (data: any) => {
+      // Update player role ready status in game state
+      const gameState = store.gameState;
+      if (gameState && gameState.players[data.playerId]) {
+        gameState.players[data.playerId].isRoleReady = data.ready;
+        store.setGameState({ ...gameState });
+      }
+    });
+
     this.socket.on('pointing_changed', (data: any) => {
       // Update pointing in game state
       const gameState = store.gameState;
@@ -122,6 +131,16 @@ class SocketService {
         
         store.setGameState({ ...gameState });
       }
+    });
+
+    this.socket.on('timer_started', (data: { room: 0 | 1; duration: number; startTime: number }) => {
+      const store = useGameStore.getState();
+      store.setLiveTimer(data.room, data.duration);
+    });
+
+    this.socket.on('timer_expired', (data: { room: 0 | 1 }) => {
+      const store = useGameStore.getState();
+      store.setLiveTimer(data.room, 0);
     });
 
     this.socket.on('game_started', (data: any) => {
@@ -203,6 +222,11 @@ class SocketService {
     if (!this.socket) return;
     this.socket.emit('player_ready');
   }
+
+  setRoleReady(): void {
+    if (!this.socket) return;
+    this.socket.emit('player_role_ready');
+  }
   
   startGame(): void {
     if (!this.socket) {
@@ -223,6 +247,11 @@ class SocketService {
   pointAtPlayer(targetId: string | null): void {
     if (!this.socket) return;
     this.socket.emit('point_at_player', { targetId });
+  }
+  
+  declareLeader(): void {
+    if (!this.socket) return;
+    this.socket.emit('declare_leader');
   }
   
   sendPlayer(targetId: string): void {

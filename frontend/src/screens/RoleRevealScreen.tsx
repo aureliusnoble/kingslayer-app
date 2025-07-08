@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
+import FullScreenRoleCard from '../components/game/FullScreenRoleCard';
 import { socketService } from '../services/socket';
 import { useGameStore } from '../stores/gameStore';
 import { RoleType } from '../shared';
@@ -21,6 +22,7 @@ export default function RoleRevealScreen() {
   const [showInfo, setShowInfo] = useState(false);
   const [ready, setReady] = useState(false);
   const [showRoomAssignment, setShowRoomAssignment] = useState(false);
+  const [showFullScreen, setShowFullScreen] = useState(false);
 
   useEffect(() => {
     if (ready && roomChangeRequired) {
@@ -32,6 +34,8 @@ export default function RoleRevealScreen() {
 
   const handleReady = () => {
     setReady(true);
+    // Send ready state to backend
+    socketService.setRoleReady();
     // Small delay to show room assignment after ready
     setTimeout(() => {
       setShowRoomAssignment(true);
@@ -76,6 +80,15 @@ export default function RoleRevealScreen() {
           </div>
 
           <Button
+            variant="secondary"
+            fullWidth
+            onClick={() => setShowFullScreen(true)}
+            className="border-4 border-current"
+          >
+            📱 SHOW MY ROLE
+          </Button>
+
+          <Button
             variant="primary"
             fullWidth
             onClick={() => setShowInfo(true)}
@@ -83,7 +96,7 @@ export default function RoleRevealScreen() {
             ℹ️ View Role Info
           </Button>
 
-          {!ready && (
+          {!ready ? (
             <Button
               variant="primary"
               fullWidth
@@ -91,6 +104,11 @@ export default function RoleRevealScreen() {
             >
               I'M READY
             </Button>
+          ) : (
+            <div className="p-4 bg-blue-100 border-2 border-blue-500 rounded-lg text-center">
+              <p className="text-lg font-semibold text-blue-800">✓ You are ready!</p>
+              <p className="text-sm text-blue-600">Waiting for other players...</p>
+            </div>
           )}
         </div>
 
@@ -108,6 +126,13 @@ export default function RoleRevealScreen() {
             </Button>
           </div>
         </Modal>
+
+        {/* Full-screen role card for SPY - shows fake role */}
+        <FullScreenRoleCard
+          role={myRole.fakeRole}
+          isVisible={showFullScreen}
+          onClose={() => setShowFullScreen(false)}
+        />
       </div>
     );
   }
@@ -139,6 +164,15 @@ export default function RoleRevealScreen() {
           </div>
 
           <Button
+            variant="secondary"
+            fullWidth
+            onClick={() => setShowFullScreen(true)}
+            className="border-4 border-current"
+          >
+            📱 SHOW MY ROLE
+          </Button>
+
+          <Button
             variant="primary"
             fullWidth
             onClick={() => setShowInfo(true)}
@@ -146,7 +180,7 @@ export default function RoleRevealScreen() {
             ℹ️ View Role Info
           </Button>
 
-          {!ready && (
+          {!ready ? (
             <Button
               variant="primary"
               fullWidth
@@ -154,6 +188,11 @@ export default function RoleRevealScreen() {
             >
               I'M READY
             </Button>
+          ) : (
+            <div className="p-4 bg-blue-100 border-2 border-blue-500 rounded-lg text-center">
+              <p className="text-lg font-semibold text-blue-800">✓ You are ready!</p>
+              <p className="text-sm text-blue-600">Waiting for other players...</p>
+            </div>
           )}
         </div>
 
@@ -171,6 +210,13 @@ export default function RoleRevealScreen() {
             </Button>
           </div>
         </Modal>
+
+        {/* Full-screen role card for SERVANT */}
+        <FullScreenRoleCard
+          role={myRole}
+          isVisible={showFullScreen}
+          onClose={() => setShowFullScreen(false)}
+        />
       </div>
     );
   }
@@ -197,6 +243,15 @@ export default function RoleRevealScreen() {
         </div>
         
         <p className="text-center text-lg font-medium">Team: {myRole.team}</p>
+
+        <Button
+          variant="secondary"
+          fullWidth
+          onClick={() => setShowFullScreen(true)}
+          className="border-4 border-current"
+        >
+          📱 SHOW MY ROLE
+        </Button>
 
         <Button
           variant="secondary"
@@ -231,6 +286,13 @@ export default function RoleRevealScreen() {
           </Button>
         </div>
       </Modal>
+
+      {/* Full-screen role card - works for all role types */}
+      <FullScreenRoleCard
+        role={myRole.type === 'SPY' && myRole.fakeRole ? myRole.fakeRole : myRole}
+        isVisible={showFullScreen}
+        onClose={() => setShowFullScreen(false)}
+      />
     </div>
   );
 }

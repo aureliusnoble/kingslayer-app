@@ -14,8 +14,12 @@ export default function PlayerList({
   showPointing = true,
   showLeaderControls = false 
 }: PlayerListProps) {
-  const { playerId, getMyPlayer, amILeader } = useGameStore();
+  const { playerId, getMyPlayer, amILeader, gameState, liveTimers, currentRoom } = useGameStore();
   const myPlayer = getMyPlayer();
+  
+  // Check if kicks are available (timer = 0)
+  const myRoomTimer = liveTimers[currentRoom === 0 ? 'room0' : 'room1'];
+  const canKick = amILeader() && myRoomTimer === 0;
 
   const handlePoint = (targetId: string) => {
     if (!showPointing || !myPlayer) return;
@@ -76,11 +80,20 @@ export default function PlayerList({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleSendPlayer(player.id);
+                    if (canKick) {
+                      handleSendPlayer(player.id);
+                    }
                   }}
-                  className="px-2 py-1 text-xs bg-neutral-dark text-white rounded hover:bg-neutral-medium"
+                  disabled={!canKick}
+                  className={clsx(
+                    'px-3 py-1 text-xs font-bold rounded',
+                    canKick
+                      ? 'bg-red-500 text-white hover:bg-red-600'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  )}
+                  title={canKick ? 'Kick this player' : 'Timer must reach 0 to kick'}
                 >
-                  SEND
+                  KICK
                 </button>
               )}
             </div>

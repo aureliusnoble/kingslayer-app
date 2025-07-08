@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import { socketService } from '../services/socket';
+import { useTimer } from '../hooks/useTimer';
 import Timer from '../components/common/Timer';
 import RoleCard from '../components/game/RoleCard';
 import PlayerList from '../components/game/PlayerList';
 import Modal from '../components/common/Modal';
 import Button from '../components/common/Button';
+import FullScreenRoleCard from '../components/game/FullScreenRoleCard';
+import RoomChangeModal from '../components/game/RoomChangeModal';
 
 export default function GameScreen() {
   const { 
@@ -13,6 +16,7 @@ export default function GameScreen() {
     myRole, 
     currentRoom, 
     roomChangeRequired,
+    liveTimers,
     getMyPlayer,
     getPlayersInMyRoom,
     getOtherRoomPlayerCount,
@@ -22,6 +26,9 @@ export default function GameScreen() {
   
   const [showRules, setShowRules] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showFullScreen, setShowFullScreen] = useState(false);
+
+  useTimer(); // Start live countdown
 
   const myPlayer = getMyPlayer();
   const playersInRoom = getPlayersInMyRoom();
@@ -38,39 +45,48 @@ export default function GameScreen() {
 
   const roomName = currentRoom === 0 ? 'A' : 'B';
   const otherRoomName = currentRoom === 0 ? 'B' : 'A';
-  const roomTimer = currentRoom === 0 
-    ? gameState.timers.room0LeaderCooldown 
-    : gameState.timers.room1LeaderCooldown;
-  const otherRoomTimer = currentRoom === 0 
-    ? gameState.timers.room1LeaderCooldown 
-    : gameState.timers.room0LeaderCooldown;
+  const myRoomTimer = liveTimers[currentRoom === 0 ? 'room0' : 'room1'];
+  const otherRoomTimer = liveTimers[currentRoom === 0 ? 'room1' : 'room0'];
+  const canKick = amILeader() && (myRoomTimer === null || myRoomTimer === 0);
+
+  // Timer display helper
+  const renderTimer = (timer: number | null, label: string) => {
+    if (timer === null) {
+      return <div className="text-gray-400 text-sm">{label}: No timer active</div>;
+    }
+    
+    if (timer === 0) {
+      return (
+        <div className="text-green-400 font-bold text-sm">
+          {label}: ✓ KICK AVAILABLE
+        </div>
+      );
+    }
+    
+    return (
+      <div className="text-orange-400 font-bold text-sm">
+        {label}: {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen flex flex-col safe-top safe-bottom">
-      {/* Room timers at top */}
+      {/* Room kick timers */}
       <div className="px-4 py-3 bg-neutral-dark text-white">
         <div className="flex justify-between items-center">
-          <Timer seconds={roomTimer} label={`Room ${roomName} Timer`} />
-          <Timer seconds={otherRoomTimer} label={`Room ${otherRoomName} Timer`} />
+          {renderTimer(myRoomTimer, `Room ${roomName}`)}
+          {renderTimer(otherRoomTimer, `Room ${otherRoomName}`)}
         </div>
       </div>
 
-      {/* Room change notification */}
-      {roomChangeRequired && (
-        <Modal isOpen={true} title="📍 ROOM CHANGE">
-          <div className="space-y-4 text-center">
-            <p className="text-lg">You must go to:</p>
-            <p className="text-3xl font-bold">ROOM {otherRoomName}</p>
-            <p className="text-sm text-neutral-medium">Leave immediately!</p>
-            <Button 
-              fullWidth 
-              onClick={() => socketService.confirmRoom(currentRoom === 0 ? 1 : 0)}
-            >
-              ACKNOWLEDGE
-            </Button>
-          </div>
-        </Modal>
-      )}
+      {/* Full-screen room change notification */}
+      <RoomChangeModal
+        isVisible={roomChangeRequired}
+        newRoom={currentRoom === 0 ? 1 : 0}
+        onConfirm={() => socketService.confirmRoom(currentRoom === 0 ? 1 : 0)}
+        blocking={true}
+      />
 
       {/* Main content */}
       <div className="flex-1 p-4 space-y-4 overflow-y-auto">
@@ -79,7 +95,7 @@ export default function GameScreen() {
           <RoleCard 
             role={myRole} 
             canAssassinate={canIAssassinate()}
-            hasUsedAbility={myPlayer.hasUsedAbility}
+            hasUsedAbility={myPlayer?.hasUsedAbility || false}
           />
         </div>
 
@@ -100,23 +116,41 @@ export default function GameScreen() {
           </p>
         </div>
 
-        {/* Leader status */}
-        {amILeader() && (
-          <div className="p-3 bg-green-100 text-green-800 rounded-lg">
-            <p className="font-semibold">You are the Leader!</p>
-            <p className="text-sm">
-              {roomTimer && roomTimer > 0 
-                ? `You can send a player in ${roomTimer} seconds`
-                : 'You can send a player to the other room'
+        {/* Leader section */}
+        {amILeader() ? (
+          <div className="p-4 bg-yellow-100 border-4 border-yellow-500 rounded-lg text-center">
+            <div className="text-4xl mb-2">👑</div>
+            <div className="text-lg font-bold text-yellow-800">YOU ARE THE LEADER</div>
+            <div className="text-sm mt-2">
+              {myRoomTimer === 0
+                ? <span className="text-green-600 font-bold">Ready to kick players</span>
+                : <span className="text-orange-600">Kick available in {myRoomTimer} seconds</span>
               }
-            </p>
+            </div>
           </div>
+        ) : (
+          <Button
+            variant="primary"
+            onClick={() => socketService.declareLeader()}
+            className="bg-yellow-500 text-black font-bold border-2 border-yellow-600 hover:bg-yellow-400"
+            fullWidth
+          >
+            👑 DECLARE MYSELF LEADER
+          </Button>
         )}
       </div>
 
       {/* Bottom utilities */}
       <div className="p-4 border-t border-neutral-light">
-        <div className="flex gap-3 justify-center">
+        <div className="grid grid-cols-3 gap-3">
+          <Button
+            variant="secondary"
+            size="small"
+            onClick={() => setShowFullScreen(true)}
+            className="border-2 border-current"
+          >
+            📱 Show Role
+          </Button>
           <Button
             variant="secondary"
             size="small"
@@ -177,6 +211,13 @@ export default function GameScreen() {
           </Button>
         </div>
       </Modal>
+
+      {/* Full-screen role card */}
+      <FullScreenRoleCard
+        role={myRole.type === 'SPY' && myRole.fakeRole ? myRole.fakeRole : myRole}
+        isVisible={showFullScreen}
+        onClose={() => setShowFullScreen(false)}
+      />
     </div>
   );
 }
