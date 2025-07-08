@@ -18,6 +18,7 @@ export class GameManager {
       isHost: true,
       isReady: false,
       isRoleReady: false,
+      isRoomConfirmed: false,
       hasUsedAbility: false,
       isLeader: false
     };
@@ -66,6 +67,7 @@ export class GameManager {
       isHost: false,
       isReady: false,
       isRoleReady: false,
+      isRoomConfirmed: false,
       hasUsedAbility: false,
       isLeader: false
     };
@@ -155,12 +157,14 @@ export class GameManager {
     game.rooms[0].players = roomAssignment.room0;
     game.rooms[1].players = roomAssignment.room1;
 
-    // Update player room assignments
+    // Update player room assignments and reset confirmation status
     roomAssignment.room0.forEach(id => {
       game.players[id].currentRoom = 0;
+      game.players[id].isRoomConfirmed = false; // Must confirm they're physically in the room
     });
     roomAssignment.room1.forEach(id => {
       game.players[id].currentRoom = 1;
+      game.players[id].isRoomConfirmed = false; // Must confirm they're physically in the room
     });
 
     // Create servant info
@@ -183,21 +187,25 @@ export class GameManager {
     return game;
   }
 
-  confirmPlayerRoom(playerId: string, _room: 0 | 1): GameState | null {
+  confirmPlayerRoom(playerId: string, room: 0 | 1): GameState | null {
     const game = this.getGameByPlayerId(playerId);
     if (!game || game.phase !== 'setup') return null;
 
     const player = game.players[playerId];
     if (!player) return null;
 
-    // Check if all players have confirmed their rooms AND are role ready
-    const allConfirmed = Object.values(game.players).every(p => 
-      game.rooms[0].players.includes(p.id) || game.rooms[1].players.includes(p.id)
-    );
-    
-    const allRoleReady = Object.values(game.players).every(p => p.isRoleReady);
+    // Mark this player as having confirmed their room
+    player.isRoomConfirmed = true;
+    console.log(`[ROOM CONFIRM] Player ${player.name} confirmed room ${room}`);
 
-    if (allConfirmed && allRoleReady && game.phase !== 'playing') {
+    // Check if ALL players have confirmed their rooms AND are role ready
+    const allRoomConfirmed = Object.values(game.players).every(p => p.isRoomConfirmed);
+    const allRoleReady = Object.values(game.players).every(p => p.isRoleReady);
+    
+    console.log(`[ROOM CONFIRM] Room confirmations: ${Object.values(game.players).filter(p => p.isRoomConfirmed).length}/${Object.values(game.players).length}`);
+    console.log(`[ROOM CONFIRM] Role ready: ${Object.values(game.players).filter(p => p.isRoleReady).length}/${Object.values(game.players).length}`);
+
+    if (allRoomConfirmed && allRoleReady) {
       // Only initialize timers when transitioning to playing phase for the first time
       game.phase = 'playing';
       
@@ -208,10 +216,25 @@ export class GameManager {
       game.timers.room0TimerStarted = now;
       game.timers.room1TimerStarted = now;
       
-      console.log(`[GAME START] Game ${game.roomCode} entering playing phase with 120s timers`);
+      console.log(`[GAME START] Game ${game.roomCode} entering playing phase with 120s timers - ALL PLAYERS CONFIRMED ROOMS`);
     }
 
     return game;
+  }
+
+  getRoomConfirmationProgress(gameId: string): { confirmed: number; total: number; names: string[] } | null {
+    const game = this.games.get(gameId);
+    if (!game || game.phase !== 'setup') return null;
+
+    const players = Object.values(game.players);
+    const confirmed = players.filter(p => p.isRoomConfirmed);
+    const notConfirmed = players.filter(p => !p.isRoomConfirmed);
+
+    return {
+      confirmed: confirmed.length,
+      total: players.length,
+      names: notConfirmed.map(p => p.name)
+    };
   }
 
   updatePointing(playerId: string, targetId: string | null): GameState | null {

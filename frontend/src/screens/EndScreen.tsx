@@ -1,13 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../stores/gameStore';
 import Button from '../components/common/Button';
+import RoomChangeModal from '../components/game/RoomChangeModal';
 import clsx from 'clsx';
 import { socketService } from '../services/socket';
 import { Player } from '../shared';
 
 export default function EndScreen() {
   const navigate = useNavigate();
-  const { gameState, myRole } = useGameStore();
+  const { gameState, myRole, roomChangeRequired, currentRoom } = useGameStore();
 
   if (!gameState || !gameState.victory) {
     return null;
@@ -83,6 +84,14 @@ export default function EndScreen() {
           </Button>
         </div>
       </div>
+
+      {/* Kick notification modal */}
+      <RoomChangeModal
+        isVisible={roomChangeRequired}
+        newRoom={currentRoom}
+        onConfirm={() => socketService.confirmRoom(currentRoom)}
+        blocking={true}
+      />
     </div>
   );
 }

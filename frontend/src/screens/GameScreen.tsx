@@ -33,19 +33,29 @@ export default function GameScreen() {
   const playersInRoom = getPlayersInMyRoom();
   const otherRoomCount = getOtherRoomPlayerCount();
 
+  // Removed auto-confirmation - players must manually confirm kicks via modal
+
+  // Ensure timers are initialized when entering playing phase
   useEffect(() => {
-    if (roomChangeRequired) {
-      // Auto-confirm room if we're in the game phase
-      socketService.confirmRoom(currentRoom);
+    if (gameState && gameState.phase === 'playing' && (liveTimers.room0 === null || liveTimers.room1 === null)) {
+      console.log(`🟡 GameScreen: Initializing timers for playing phase`);
+      const store = useGameStore.getState();
+      if (liveTimers.room0 === null) store.setLiveTimer(0, 120);
+      if (liveTimers.room1 === null) store.setLiveTimer(1, 120);
     }
-  }, [roomChangeRequired, currentRoom]);
+  }, [gameState?.phase, liveTimers.room0, liveTimers.room1]);
 
   if (!gameState || !myRole || !myPlayer) return null;
 
   const roomName = currentRoom === 0 ? 'A' : 'B';
   const otherRoomName = currentRoom === 0 ? 'B' : 'A';
+  // Timer values with fallback to default if game is in playing phase
   const myRoomTimer = liveTimers[currentRoom === 0 ? 'room0' : 'room1'];
   const otherRoomTimer = liveTimers[currentRoom === 0 ? 'room1' : 'room0'];
+  
+  // If timers are null but game is in playing phase, they should be active
+  const effectiveMyRoomTimer = gameState.phase === 'playing' && myRoomTimer === null ? 120 : myRoomTimer;
+  const effectiveOtherRoomTimer = gameState.phase === 'playing' && otherRoomTimer === null ? 120 : otherRoomTimer;
 
   // Timer display helper
   const renderTimer = (timer: number | null, label: string) => {
@@ -73,16 +83,16 @@ export default function GameScreen() {
       {/* Room kick timers */}
       <div className="px-4 py-3 bg-neutral-dark text-white">
         <div className="flex justify-between items-center">
-          {renderTimer(myRoomTimer, `Room ${roomName}`)}
-          {renderTimer(otherRoomTimer, `Room ${otherRoomName}`)}
+          {renderTimer(effectiveMyRoomTimer, `Room ${roomName}`)}
+          {renderTimer(effectiveOtherRoomTimer, `Room ${otherRoomName}`)}
         </div>
       </div>
 
       {/* Full-screen room change notification */}
       <RoomChangeModal
         isVisible={roomChangeRequired}
-        newRoom={currentRoom === 0 ? 1 : 0}
-        onConfirm={() => socketService.confirmRoom(currentRoom === 0 ? 1 : 0)}
+        newRoom={currentRoom}
+        onConfirm={() => socketService.confirmRoom(currentRoom)}
         blocking={true}
       />
 
@@ -95,6 +105,13 @@ export default function GameScreen() {
             canAssassinate={canIAssassinate()}
             hasUsedAbility={myPlayer?.hasUsedAbility || false}
           />
+        </div>
+
+        {/* Current room indicator */}
+        <div className="p-4 bg-blue-100 border-2 border-blue-500 rounded-lg text-center">
+          <h2 className="text-2xl font-bold text-blue-800">
+            🚪 YOU ARE IN ROOM {roomName}
+          </h2>
         </div>
 
         {/* Players in room */}
@@ -210,7 +227,7 @@ export default function GameScreen() {
         </div>
       </Modal>
 
-      {/* Full-screen role card */}
+      {/* Full-screen role card - spies see their FAKE role during game */}
       <FullScreenRoleCard
         role={myRole.type === 'SPY' && myRole.fakeRole ? myRole.fakeRole : myRole}
         isVisible={showFullScreen}

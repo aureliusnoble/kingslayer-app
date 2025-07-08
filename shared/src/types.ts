@@ -29,6 +29,7 @@ export interface Player {
   isHost: boolean;
   isReady: boolean;
   isRoleReady: boolean; // Ready after seeing role assignment
+  isRoomConfirmed: boolean; // Confirmed they're physically in their assigned room
   hasUsedAbility: boolean;
   canAssassinate?: boolean; // For assassins after swordsmith visit
   isLeader: boolean;
@@ -91,6 +92,7 @@ export interface ServerToClientEvents {
   'phase_changed': { phase: GamePhase };
   'room_assignment': { room: 0 | 1 };
   'room_confirmed': { playerId: string; room: 0 | 1 };
+  'room_confirmation_progress': { confirmed: number; total: number; names: string[] };
   'pointing_changed': { playerId: string; targetId: string | null };
   'leader_elected': { roomIndex: 0 | 1; leaderId: string };
   'player_sent': { playerId: string; fromRoom: 0 | 1; toRoom: 0 | 1 };

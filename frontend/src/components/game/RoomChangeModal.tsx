@@ -31,11 +31,14 @@ export default function RoomChangeModal({
       <div className="relative z-10 w-full max-w-md mx-auto">
         {/* Warning icon and header */}
         <div className="text-center mb-8">
-          <div className="text-8xl mb-4">🚪</div>
-          <h1 className="text-3xl font-bold text-white mb-2">
-            ROOM CHANGE REQUIRED
+          <div className="text-8xl mb-4 animate-pulse">🚪</div>
+          <h1 className="text-4xl font-bold text-white mb-2 animate-pulse">
+            YOU HAVE BEEN KICKED!
           </h1>
-          <div className="w-16 h-1 bg-red-500 mx-auto"></div>
+          <h2 className="text-2xl font-semibold text-red-300 mb-2">
+            ROOM CHANGE REQUIRED
+          </h2>
+          <div className="w-24 h-1 bg-red-500 mx-auto animate-pulse"></div>
         </div>
 
         {/* Main content card */}
@@ -75,9 +78,9 @@ export default function RoomChangeModal({
             size="large"
             fullWidth
             onClick={onConfirm}
-            className="bg-red-500 hover:bg-red-600 text-white font-bold py-4 text-xl"
+            className="bg-red-500 hover:bg-red-600 text-white font-bold py-4 text-xl animate-pulse"
           >
-            ✓ I AM IN ROOM {roomName}
+            ✓ CONFIRM - I AM IN ROOM {roomName}
           </Button>
         </div>
 

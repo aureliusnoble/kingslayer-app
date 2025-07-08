@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import FullScreenRoleCard from '../components/game/FullScreenRoleCard';
+import RoomChangeModal from '../components/game/RoomChangeModal';
 import { socketService } from '../services/socket';
 import { useGameStore } from '../stores/gameStore';
 import { RoleType } from '../shared';
@@ -18,7 +19,7 @@ const roleInfo: Record<RoleType, string> = {
 };
 
 export default function RoleRevealScreen() {
-  const { myRole, servantKingId, gameState, currentRoom, roomChangeRequired } = useGameStore();
+  const { myRole, servantKingId, gameState, currentRoom, roomChangeRequired, roomConfirmationProgress } = useGameStore();
   const [showInfo, setShowInfo] = useState(false);
   const [ready, setReady] = useState(false);
   const [showRoomAssignment, setShowRoomAssignment] = useState(false);
@@ -133,6 +134,14 @@ export default function RoleRevealScreen() {
           isVisible={showFullScreen}
           onClose={() => setShowFullScreen(false)}
         />
+
+        {/* Kick notification modal */}
+        <RoomChangeModal
+          isVisible={roomChangeRequired}
+          newRoom={currentRoom}
+          onConfirm={() => socketService.confirmRoom(currentRoom)}
+          blocking={true}
+        />
       </div>
     );
   }
@@ -217,6 +226,14 @@ export default function RoleRevealScreen() {
           isVisible={showFullScreen}
           onClose={() => setShowFullScreen(false)}
         />
+
+        {/* Kick notification modal */}
+        <RoomChangeModal
+          isVisible={roomChangeRequired}
+          newRoom={currentRoom}
+          onConfirm={() => socketService.confirmRoom(currentRoom)}
+          blocking={true}
+        />
       </div>
     );
   }
@@ -281,17 +298,40 @@ export default function RoleRevealScreen() {
           <p className="text-lg">You are assigned to:</p>
           <p className="text-3xl font-bold text-center">ROOM {currentRoom === 0 ? 'A' : 'B'}</p>
           <p className="text-sm text-neutral-medium">Please move to your assigned room now.</p>
+          
+          {/* Room confirmation progress */}
+          {roomConfirmationProgress && (
+            <div className="bg-neutral-light p-3 rounded">
+              <p className="text-sm font-semibold">
+                Players Confirmed: {roomConfirmationProgress.confirmed}/{roomConfirmationProgress.total}
+              </p>
+              {roomConfirmationProgress.names.length > 0 && (
+                <p className="text-xs text-neutral-medium mt-1">
+                  Waiting for: {roomConfirmationProgress.names.join(', ')}
+                </p>
+              )}
+            </div>
+          )}
+          
           <Button fullWidth onClick={handleConfirmRoom}>
             I'M IN MY ROOM
           </Button>
         </div>
       </Modal>
 
-      {/* Full-screen role card - works for all role types */}
+      {/* Full-screen role card - spies see their REAL role during setup */}
       <FullScreenRoleCard
-        role={myRole.type === 'SPY' && myRole.fakeRole ? myRole.fakeRole : myRole}
+        role={myRole}
         isVisible={showFullScreen}
         onClose={() => setShowFullScreen(false)}
+      />
+
+      {/* Kick notification modal */}
+      <RoomChangeModal
+        isVisible={roomChangeRequired}
+        newRoom={currentRoom === 0 ? 1 : 0}
+        onConfirm={() => socketService.confirmRoom(currentRoom === 0 ? 1 : 0)}
+        blocking={true}
       />
     </div>
   );

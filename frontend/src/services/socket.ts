@@ -1,6 +1,10 @@
 import { io } from 'socket.io-client';
 import { useGameStore } from '../stores/gameStore';
 
+// Game lifecycle tracking for kick detection
+let gameHasStarted = false;
+let playingPhaseReached = false;
+
 // Debug logging helper
 const DEBUG = import.meta.env.DEV;
 const debugLog = (event: string, data: any) => {
@@ -44,6 +48,10 @@ class SocketService {
     
     this.socket.on('connect', () => {
       console.log('Connected to server');
+      // Reset game lifecycle flags on new connection
+      gameHasStarted = false;
+      playingPhaseReached = false;
+      console.log(`🔄 Reset game lifecycle flags - gameHasStarted: ${gameHasStarted}, playingPhaseReached: ${playingPhaseReached}`);
       store.setConnected(true);
       store.setError(null);
     });
@@ -84,8 +92,25 @@ class SocketService {
     });
     
     this.socket.on('room_assignment', (data: any) => {
+      console.log(`🚪 ROOM_ASSIGNMENT received: Moving to room ${data.room}`);
+      console.log(`🚪 Game lifecycle - gameHasStarted: ${gameHasStarted}, playingPhaseReached: ${playingPhaseReached}`);
+      
       store.setCurrentRoom(data.room);
-      store.setRoomChangeRequired(true);
+      
+      // Use lifecycle flags to determine if this is a kick or initial assignment
+      // Initial assignments happen during the game start sequence BEFORE playing phase
+      // Kicks only happen AFTER we've reached the playing phase
+      const isKick = playingPhaseReached;
+      
+      console.log(`🚪 Is this a kick? ${isKick}`);
+      
+      // Show kick modal only for actual kicks (after playing phase reached)
+      if (isKick) {
+        store.setRoomChangeRequired(true);
+        console.log(`🚪 Room change modal should now be visible (KICKED!)`);
+      } else {
+        console.log(`🚪 Initial room assignment during game start - no modal needed`);
+      }
     });
     
     this.socket.on('player_ready_changed', (data: any) => {
@@ -116,6 +141,7 @@ class SocketService {
     });
 
     this.socket.on('leader_elected', (data: any) => {
+      console.log(`🟢 LEADER_ELECTED received: Room ${data.roomIndex}, Leader: ${data.leaderId}`);
       // Update leader in game state
       const gameState = store.gameState;
       if (gameState) {
@@ -134,6 +160,7 @@ class SocketService {
     });
 
     this.socket.on('timer_started', (data: { room: 0 | 1; duration: number; startTime: number }) => {
+      console.log(`🟢 TIMER_STARTED received: Room ${data.room}, Duration: ${data.duration}s`);
       const store = useGameStore.getState();
       store.setLiveTimer(data.room, data.duration);
     });
@@ -145,12 +172,36 @@ class SocketService {
 
     this.socket.on('game_started', (data: any) => {
       debugLog('game_started', { phase: data.gameState.phase });
+      gameHasStarted = true;
+      console.log(`🟢 Game has started - gameHasStarted: ${gameHasStarted}`);
       // Game started event - state_update will handle the actual state change
     });
 
     this.socket.on('phase_changed', (data: any) => {
       debugLog('phase_changed', { phase: data.phase });
-      // Phase changed event - state_update will handle the actual state change
+      console.log(`🔵 PHASE_CHANGED received: ${data.phase}`);
+      
+      // Track when we reach playing phase
+      if (data.phase === 'playing') {
+        playingPhaseReached = true;
+        console.log(`🟢 Playing phase reached - playingPhaseReached: ${playingPhaseReached}`);
+      }
+      
+      // When entering playing phase, ensure timers are properly initialized
+      if (data.phase === 'playing') {
+        const store = useGameStore.getState();
+        console.log(`🔵 Entering playing phase - current timer state:`, store.liveTimers);
+        
+        // If timers are still null after 500ms, initialize them manually
+        setTimeout(() => {
+          const currentState = useGameStore.getState();
+          if (currentState.liveTimers.room0 === null || currentState.liveTimers.room1 === null) {
+            console.log(`🟡 FALLBACK: Initializing timers manually to 120s`);
+            currentState.setLiveTimer(0, 120);
+            currentState.setLiveTimer(1, 120);
+          }
+        }, 500);
+      }
     });
 
     this.socket.on('error', (data: any) => {
@@ -194,6 +245,12 @@ class SocketService {
           store.setGameState({ ...gameState });
         }
       }
+    });
+    
+    this.socket.on('room_confirmation_progress', (data: { confirmed: number; total: number; names: string[] }) => {
+      console.log(`🏠 Room confirmation progress: ${data.confirmed}/${data.total}`, data.names);
+      const store = useGameStore.getState();
+      store.setRoomConfirmationProgress(data);
     });
   }
   
@@ -251,6 +308,7 @@ class SocketService {
   
   declareLeader(): void {
     if (!this.socket) return;
+    console.log('🟡 DECLARING LEADER - Emitting declare_leader event');
     this.socket.emit('declare_leader');
   }
   

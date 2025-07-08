@@ -24,6 +24,13 @@ interface GameStore {
     room1: number | null; // seconds remaining, null if not active
   };
   
+  // Room confirmation progress
+  roomConfirmationProgress: {
+    confirmed: number;
+    total: number;
+    names: string[];
+  } | null;
+  
   // Actions
   setConnected: (connected: boolean) => void;
   setRoomCode: (roomCode: string | null) => void;
@@ -36,6 +43,7 @@ interface GameStore {
   setLoading: (loading: boolean) => void;
   setLiveTimer: (room: 0 | 1, seconds: number | null) => void;
   updateLiveTimers: () => void; // called every second
+  setRoomConfirmationProgress: (progress: { confirmed: number; total: number; names: string[] } | null) => void;
   reset: () => void;
   
   // Computed getters
@@ -59,6 +67,7 @@ const initialState = {
   error: null,
   loading: false,
   liveTimers: { room0: null, room1: null },
+  roomConfirmationProgress: null,
 };
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -74,9 +83,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setError: (error) => set({ error }),
   setLoading: (loading) => set({ loading }),
   
-  setLiveTimer: (room, seconds) => set(state => ({
-    liveTimers: { ...state.liveTimers, [room === 0 ? 'room0' : 'room1']: seconds }
-  })),
+  setLiveTimer: (room, seconds) => set(state => {
+    const newTimers = { ...state.liveTimers, [room === 0 ? 'room0' : 'room1']: seconds };
+    return { liveTimers: newTimers };
+  }),
 
   updateLiveTimers: () => set(state => {
     const newTimers = { ...state.liveTimers };
@@ -88,6 +98,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
     return { liveTimers: newTimers };
   }),
+  
+  setRoomConfirmationProgress: (progress) => set({ roomConfirmationProgress: progress }),
   
   reset: () => set(initialState),
   

@@ -28,6 +28,8 @@ export interface Player {
   currentRoom: 0 | 1;
   isHost: boolean;
   isReady: boolean;
+  isRoleReady: boolean; // Ready after seeing role assignment
+  isRoomConfirmed: boolean; // Confirmed they're physically in their assigned room
   hasUsedAbility: boolean;
   canAssassinate?: boolean; // For assassins after swordsmith visit
   isLeader: boolean;
@@ -50,6 +52,9 @@ export interface GameState {
   timers: {
     room0LeaderCooldown?: number;
     room1LeaderCooldown?: number;
+    // Add timestamps for live countdown
+    room0TimerStarted?: number; // timestamp when timer started
+    room1TimerStarted?: number; // timestamp when timer started
   };
   victory?: {
     winner: Team;
@@ -64,6 +69,7 @@ export interface ClientToServerEvents {
   'join_game': { roomCode: string; playerName: string };
   'leave_game': void;
   'player_ready': void;
+  'player_role_ready': void; // Ready after seeing role assignment
   'start_game': void;
   'confirm_room': { room: 0 | 1 };
   'point_at_player': { targetId: string | null };
@@ -80,17 +86,22 @@ export interface ServerToClientEvents {
   'player_joined': { player: Player };
   'player_left': { playerId: string };
   'player_ready_changed': { playerId: string; ready: boolean };
+  'player_role_ready_changed': { playerId: string; ready: boolean };
   'game_started': { gameState: GameState };
   'role_assigned': { role: Role; servantKingId?: string };
   'phase_changed': { phase: GamePhase };
   'room_assignment': { room: 0 | 1 };
   'room_confirmed': { playerId: string; room: 0 | 1 };
+  'room_confirmation_progress': { confirmed: number; total: number; names: string[] };
   'pointing_changed': { playerId: string; targetId: string | null };
   'leader_elected': { roomIndex: 0 | 1; leaderId: string };
   'player_sent': { playerId: string; fromRoom: 0 | 1; toRoom: 0 | 1 };
   'swordsmith_confirmed': { assassinId: string };
   'game_ended': { winner: Team; reason: string };
-  'timer_update': { room0Timer?: number; room1Timer?: number };
+  'timer_update': { 
+    room0Timer?: number; 
+    room1Timer?: number; 
+  };
   'error': { message: string; code: string };
   'state_update': { gameState: GameState };
 }
