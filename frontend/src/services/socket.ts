@@ -1,6 +1,17 @@
 import { io } from 'socket.io-client';
 import { useGameStore } from '../stores/gameStore';
 
+// Debug logging helper
+const DEBUG = import.meta.env.DEV;
+const debugLog = (event: string, data: any) => {
+  if (DEBUG) {
+    console.log(`[FRONTEND-SOCKET] ${event}:`, {
+      data: typeof data === 'object' ? data : { value: data },
+      timestamp: new Date().toISOString()
+    });
+  }
+};
+
 class SocketService {
   private socket: any = null;
   
@@ -43,12 +54,14 @@ class SocketService {
     });
     
     this.socket.on('game_created', (data: any) => {
+      debugLog('game_created', data);
       store.setRoomCode(data.roomCode);
       store.setPlayerId(data.playerId);
       // Don't set loading=false yet - wait for state_update
     });
     
     this.socket.on('game_joined', (data: any) => {
+      debugLog('game_joined', { roomCode: data.gameState.roomCode, playerCount: Object.keys(data.gameState.players).length });
       store.setGameState(data.gameState);
       store.setPlayerId(data.playerId);
       store.setRoomCode(data.gameState.roomCode);
@@ -56,10 +69,12 @@ class SocketService {
     });
     
     this.socket.on('state_update', (data: any) => {
+      debugLog('state_update', { phase: data.gameState.phase, playerCount: Object.keys(data.gameState.players).length });
       store.setGameState(data.gameState);
       // Set loading=false if we have roomCode (indicates game creation complete)
       const currentState = useGameStore.getState();
       if (currentState.roomCode && currentState.loading) {
+        debugLog('loading_complete', { roomCode: currentState.roomCode });
         store.setLoading(false);
       }
     });
@@ -73,6 +88,42 @@ class SocketService {
       store.setRoomChangeRequired(true);
     });
     
+    this.socket.on('player_ready_changed', (data: any) => {
+      // Update player ready status in game state
+      const gameState = store.gameState;
+      if (gameState && gameState.players[data.playerId]) {
+        gameState.players[data.playerId].isReady = data.ready;
+        store.setGameState({ ...gameState });
+      }
+    });
+
+    this.socket.on('pointing_changed', (data: any) => {
+      // Update pointing in game state
+      const gameState = store.gameState;
+      if (gameState && gameState.players[data.playerId]) {
+        gameState.players[data.playerId].pointingAt = data.targetId;
+        store.setGameState({ ...gameState });
+      }
+    });
+
+    this.socket.on('leader_elected', (data: any) => {
+      // Update leader in game state
+      const gameState = store.gameState;
+      if (gameState) {
+        // Clear previous leader
+        Object.values(gameState.players).forEach(player => {
+          player.isLeader = false;
+        });
+        
+        // Set new leader
+        if (data.leaderId && gameState.players[data.leaderId]) {
+          gameState.players[data.leaderId].isLeader = true;
+        }
+        
+        store.setGameState({ ...gameState });
+      }
+    });
+
     this.socket.on('error', (data: any) => {
       store.setError(data.message);
       store.setLoading(false);
@@ -120,12 +171,14 @@ class SocketService {
   // Emit events
   createGame(playerName: string, playerCount: number): void {
     if (!this.socket) return;
+    debugLog('emit_create_game', { playerName, playerCount });
     useGameStore.getState().setLoading(true);
     this.socket.emit('create_game', { playerName, playerCount });
   }
   
   joinGame(roomCode: string, playerName: string): void {
     if (!this.socket) return;
+    debugLog('emit_join_game', { roomCode: roomCode.toUpperCase(), playerName });
     useGameStore.getState().setLoading(true);
     this.socket.emit('join_game', { roomCode: roomCode.toUpperCase(), playerName });
   }

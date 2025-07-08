@@ -2,6 +2,18 @@
 import { gameManager } from '../routes/gameRoutes';
 import { z } from 'zod';
 
+// Debug logging helper
+const DEBUG = process.env.NODE_ENV === 'development';
+const debugLog = (event: string, data: any, socketId?: string) => {
+  if (DEBUG) {
+    console.log(`[SOCKET] ${event}:`, {
+      socketId: socketId ? socketId.substring(0, 8) + '...' : 'N/A',
+      data: typeof data === 'object' ? JSON.stringify(data, null, 2) : data,
+      timestamp: new Date().toISOString()
+    });
+  }
+};
+
 // Validation schemas
 const JoinGameSchema = z.object({
   roomCode: z.string().length(6).regex(/^[A-Z0-9]+$/),
@@ -40,6 +52,7 @@ export function setupSocketHandlers(io: any) {
     console.log('Client connected:', socket.id);
 
     socket.on('create_game', (data: any) => {
+      debugLog('create_game', data, socket.id);
       try {
         const validated = CreateGameSchema.parse(data);
         const { game, playerId } = gameManager.createGame(
@@ -51,13 +64,16 @@ export function setupSocketHandlers(io: any) {
         socketToPlayer.set(socket.id, playerId);
         socket.join(game.roomCode);
         
+        debugLog('game_created', { roomCode: game.roomCode, playerId }, socket.id);
         socket.emit('game_created', { 
           roomCode: game.roomCode, 
           playerId 
         });
         
+        debugLog('state_update', { phase: game.phase, playerCount: Object.keys(game.players).length }, socket.id);
         socket.emit('state_update', { gameState: game });
       } catch (error) {
+        debugLog('create_game_error', error, socket.id);
         socket.emit('error', { 
           message: 'Failed to create game', 
           code: 'CREATE_FAILED' 
@@ -116,6 +132,7 @@ export function setupSocketHandlers(io: any) {
 
     socket.on('player_ready', () => {
       const playerId = socketToPlayer.get(socket.id);
+      debugLog('player_ready', { playerId }, socket.id);
       if (!playerId) return;
 
       const currentGame = gameManager.getGameByPlayerId(playerId);
@@ -126,6 +143,7 @@ export function setupSocketHandlers(io: any) {
       const game = gameManager.setPlayerReady(playerId, newReadyState);
       
       if (game) {
+        debugLog('player_ready_changed', { playerId, ready: newReadyState }, socket.id);
         io.to(game.roomCode).emit('player_ready_changed', { 
           playerId, 
           ready: newReadyState  // Use the new state, not the old one

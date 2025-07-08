@@ -94,13 +94,48 @@ const getActiveRoute = () => {
 
 **Result**: Navigation now waits for both socket events to complete before transitioning from "Creating..." to lobby screen.
 
-### 1.2 Complete Socket Event Handlers
-**Backend files**: `backend/src/socket/index.ts`
+### 1.2 Complete Socket Event Handlers ✅ COMPLETED
+**Problem**: Missing synchronization events causing inconsistent client state updates.
 
-**Missing Events to Implement**:
-- Proper `player_ready_changed` broadcasting
-- `leader_elected` event on majority pointing
-- `game_ended` event on victory conditions
+**Files Modified**:
+- ✅ `backend/src/socket/index.ts` - Fixed player ready state bug
+- ✅ `frontend/src/services/socket.ts` - Added missing event handlers
+
+**Issues Fixed**:
+1. **Player Ready Bug**: Backend was emitting old ready state instead of new state
+2. **Missing Frontend Handlers**: Added handlers for `player_ready_changed`, `pointing_changed`, `leader_elected`
+
+**Implementation**:
+```typescript
+// Backend fix - player_ready handler
+const newReadyState = !player.isReady;
+const game = gameManager.setPlayerReady(playerId, newReadyState);
+io.to(game.roomCode).emit('player_ready_changed', { 
+  playerId, 
+  ready: newReadyState  // Use new state, not old
+});
+
+// Frontend - Added missing handlers
+this.socket.on('player_ready_changed', (data: any) => {
+  const gameState = store.gameState;
+  if (gameState && gameState.players[data.playerId]) {
+    gameState.players[data.playerId].isReady = data.ready;
+    store.setGameState({ ...gameState });
+  }
+});
+
+this.socket.on('pointing_changed', (data: any) => {
+  // Update pointing in real-time
+});
+
+this.socket.on('leader_elected', (data: any) => {
+  // Update leader status in real-time
+});
+```
+
+**Result**: Real-time state synchronization now works properly for ready states, pointing, and leader elections.
+
+**Note**: `game_ended` events are intentionally deferred to Phase 2 (Core Game Mechanics).
 
 ### 1.3 Add State Update Logging
 **Files**: All socket handlers, gameStore.ts
