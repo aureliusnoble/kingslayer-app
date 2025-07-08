@@ -38,23 +38,31 @@ export default function CodeInput({
     // Update parent value
     onChange(newInputs.join(''));
     
-    // Move to next input if not empty
+    // Move to next input if not empty (use timeout for mobile compatibility)
     if (newValue && index < length - 1) {
-      inputRefs.current[index + 1]?.focus();
+      setTimeout(() => {
+        inputRefs.current[index + 1]?.focus();
+      }, 10);
     }
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
     if (e.key === 'Backspace' && !inputs[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
+      setTimeout(() => {
+        inputRefs.current[index - 1]?.focus();
+      }, 10);
     }
     
     if (e.key === 'ArrowLeft' && index > 0) {
-      inputRefs.current[index - 1]?.focus();
+      setTimeout(() => {
+        inputRefs.current[index - 1]?.focus();
+      }, 10);
     }
     
     if (e.key === 'ArrowRight' && index < length - 1) {
-      inputRefs.current[index + 1]?.focus();
+      setTimeout(() => {
+        inputRefs.current[index + 1]?.focus();
+      }, 10);
     }
   };
 
@@ -70,9 +78,11 @@ export default function CodeInput({
     setInputs(newInputs);
     onChange(newInputs.join(''));
     
-    // Focus on the next empty input or the last input
+    // Focus on the next empty input or the last input (use timeout for mobile compatibility)
     const nextIndex = Math.min(pastedText.length, length - 1);
-    inputRefs.current[nextIndex]?.focus();
+    setTimeout(() => {
+      inputRefs.current[nextIndex]?.focus();
+    }, 10);
   };
 
   return (
@@ -91,6 +101,14 @@ export default function CodeInput({
           onChange={(e) => handleChange(index, e.target.value)}
           onKeyDown={(e) => handleKeyDown(index, e)}
           onPaste={handlePaste}
+          onFocus={(e) => {
+            // Select all text on focus for better mobile experience
+            e.target.select();
+          }}
+          inputMode="text"
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck="false"
           disabled={disabled}
           className={clsx(
             'w-12 h-12 text-center text-xl font-mono font-bold transition-all duration-200',

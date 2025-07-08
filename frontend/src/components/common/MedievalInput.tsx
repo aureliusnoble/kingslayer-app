@@ -43,6 +43,19 @@ const MedievalInput = forwardRef<HTMLInputElement, MedievalInputProps>(({
           error && 'border-red-primary shadow-red-primary/30',
           className
         )}
+        onKeyDown={(e) => {
+          // Prevent mobile keyboards from auto-advancing to next input
+          if (e.key === 'Enter' || e.key === 'Next') {
+            e.preventDefault();
+            e.currentTarget.blur();
+          }
+          // Call any existing onKeyDown handler
+          if (props.onKeyDown) {
+            props.onKeyDown(e);
+          }
+        }}
+        autoCorrect="off"
+        spellCheck="false"
         {...props}
       />
       
