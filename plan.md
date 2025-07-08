@@ -94,6 +94,8 @@ const getActiveRoute = () => {
 
 **Result**: Navigation now waits for both socket events to complete before transitioning from "Creating..." to lobby screen.
 
+**Additional Fix Applied**: Extended the same navigation pattern to `JoinGameScreen.tsx` to prevent multiple join attempts and ensure automatic lobby navigation after successful join.
+
 ### 1.2 Complete Socket Event Handlers ✅ COMPLETED
 **Problem**: Missing synchronization events causing inconsistent client state updates.
 

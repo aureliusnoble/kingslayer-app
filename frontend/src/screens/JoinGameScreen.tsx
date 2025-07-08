@@ -7,7 +7,7 @@ import clsx from 'clsx';
 
 export default function JoinGameScreen() {
   const navigate = useNavigate();
-  const { loading, error } = useGameStore();
+  const { loading, error, roomCode: storeRoomCode, gameState } = useGameStore();
   const [playerName, setPlayerName] = useState('');
   const [roomCode, setRoomCode] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -50,6 +50,13 @@ export default function JoinGameScreen() {
   useEffect(() => {
     inputRefs.current[0]?.focus();
   }, []);
+
+  // Navigate to lobby when game is joined successfully
+  useEffect(() => {
+    if (storeRoomCode && gameState && gameState.phase === 'lobby' && !loading) {
+      navigate('/lobby');
+    }
+  }, [storeRoomCode, gameState, loading, navigate]);
 
   return (
     <div className="min-h-screen flex flex-col p-6 safe-top safe-bottom">
