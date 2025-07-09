@@ -33,7 +33,6 @@ export interface Player {
   hasUsedAbility: boolean;
   canAssassinate?: boolean; // For assassins after swordsmith visit
   isLeader: boolean;
-  pointingAt?: string; // Player ID they're pointing at
 }
 
 export interface RoomState {
@@ -72,7 +71,6 @@ export interface ClientToServerEvents {
   'player_role_ready': void; // Ready after seeing role assignment
   'start_game': void;
   'confirm_room': { room: 0 | 1 };
-  'point_at_player': { targetId: string | null };
   'elect_leader': { playerId: string };
   'send_player': { targetId: string };
   'gatekeeper_send': { targetId: string };
@@ -95,7 +93,6 @@ export interface ServerToClientEvents {
   'room_assignment': { room: 0 | 1 };
   'room_confirmed': { playerId: string; room: 0 | 1 };
   'room_confirmation_progress': { confirmed: number; total: number; names: string[] };
-  'pointing_changed': { playerId: string; targetId: string | null };
   'leader_elected': { roomIndex: 0 | 1; leaderId: string };
   'player_sent': { playerId: string; fromRoom: 0 | 1; toRoom: 0 | 1 };
   'swordsmith_confirmed': { assassinId: string };

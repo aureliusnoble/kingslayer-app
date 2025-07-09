@@ -6,13 +6,11 @@ import { Crown, Clock } from 'lucide-react';
 
 interface PlayerListProps {
   players: Player[];
-  showPointing?: boolean;
   showLeaderControls?: boolean;
 }
 
 export default function PlayerList({ 
   players, 
-  showPointing = true,
   showLeaderControls = false 
 }: PlayerListProps) {
   const { playerId, getMyPlayer, amILeader, liveTimers, currentRoom } = useGameStore();
@@ -22,30 +20,14 @@ export default function PlayerList({
   const myRoomTimer = liveTimers[currentRoom === 0 ? 'room0' : 'room1'];
   const canKick = amILeader() && myRoomTimer === 0;
 
-  const handlePoint = (targetId: string) => {
-    if (!showPointing || !myPlayer) return;
-    
-    // Toggle pointing
-    if (myPlayer.pointingAt === targetId) {
-      socketService.pointAtPlayer(null);
-    } else {
-      socketService.pointAtPlayer(targetId);
-    }
-  };
-
   const handleSendPlayer = (targetId: string) => {
     if (!amILeader() || !showLeaderControls) return;
     socketService.sendPlayer(targetId);
   };
 
-  const getPointingAtPlayer = (player: Player): number => {
-    return players.filter(p => p.pointingAt === player.id).length;
-  };
-
   return (
     <div className="space-y-2">
       {players.map(player => {
-        const pointCount = getPointingAtPlayer(player);
         const isMe = player.id === playerId;
         
         return (
@@ -53,10 +35,8 @@ export default function PlayerList({
             key={player.id}
             className={clsx(
               'p-3 rounded-lg flex items-center justify-between border border-medieval-stone-light transition-colors',
-              isMe ? 'bg-medieval-metal-gold bg-opacity-20 border-medieval-metal-gold' : 'bg-surface-light',
-              showPointing && !isMe && 'cursor-pointer hover:bg-surface-medium'
+              isMe ? 'bg-medieval-metal-gold bg-opacity-20 border-medieval-metal-gold' : 'bg-surface-light'
             )}
-            onClick={() => !isMe && handlePoint(player.id)}
           >
             <div className="flex items-center gap-2">
               <span className="font-medium text-white">
@@ -67,16 +47,6 @@ export default function PlayerList({
             </div>
             
             <div className="flex items-center gap-2">
-              {pointCount > 0 && (
-                <span className="text-sm text-medieval-metal-gold font-bold">
-                  {'← '.repeat(pointCount)}
-                </span>
-              )}
-              
-              {myPlayer?.pointingAt === player.id && (
-                <span className="text-medieval-metal-gold text-lg font-bold">←</span>
-              )}
-              
               {showLeaderControls && amILeader() && !isMe && (
                 <button
                   onClick={(e) => {
@@ -93,6 +63,7 @@ export default function PlayerList({
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   )}
                   title={canKick ? 'Kick this player' : 'Timer must reach 0 to kick'}
+                  data-tutorial="kick-button"
                 >
                   KICK
                 </button>

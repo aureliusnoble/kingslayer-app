@@ -72,7 +72,7 @@ export default function RoleCard({ role, canAssassinate = false, hasUsedAbility 
   const getRoleInfo = () => {
     const infos: Record<string, string> = {
       KING: 'Stay alive! If identified by the enemy Assassin, your team loses.',
-      ASSASSIN: 'Identify and publicly name the opposing King.',
+      ASSASSIN: 'Identify and publicly name the opposing King. In 8+ player games you must show your full role to a Swordsmith first.',
       GATEKEEPER: 'Send any player in your room to the other room.',
       SWORDSMITH: 'Confirm when your Assassin visits you.',
       GUARD: 'Protect your King by being in the same room.',

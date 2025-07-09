@@ -10,6 +10,7 @@ import LobbyScreen from './screens/LobbyScreen';
 import RoleRevealScreen from './screens/RoleRevealScreen';
 import GameScreen from './screens/GameScreen';
 import EndScreen from './screens/EndScreen';
+import TutorialScreen from './screens/TutorialScreen';
 
 function App() {
   const { gameState, roomCode, loading, connected, reconnecting } = useGameStore();
@@ -59,6 +60,7 @@ function App() {
           <Route path="/" element={<HomeScreen />} />
           <Route path="/create" element={<CreateGameScreen />} />
           <Route path="/join" element={<JoinGameScreen />} />
+          <Route path="/tutorial" element={<TutorialScreen />} />
           <Route path="/lobby/:roomCode" element={<AutoJoinScreen />} />
           <Route 
             path="/lobby" 

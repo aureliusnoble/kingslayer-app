@@ -1,13 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/common/Button';
-import { useState } from 'react';
-import Modal from '../components/common/Modal';
 import MedievalBackground from '../components/common/MedievalBackground';
 import CrownLogo from '../components/common/CrownLogo';
 
 export default function HomeScreen() {
   const navigate = useNavigate();
-  const [showRules, setShowRules] = useState(false);
 
   return (
     <MedievalBackground variant="castle-hall" particles={true}>
@@ -47,13 +44,13 @@ export default function HomeScreen() {
             </Button>
 
             <Button
-              variant="medieval-stone"
-              size="medium"
+              variant="medieval-gold"
+              size="large"
               fullWidth
-              onClick={() => setShowRules(true)}
-              className="bg-opacity-90 hover:bg-opacity-100 transition-opacity"
+              onClick={() => navigate('/tutorial')}
+              className="bg-opacity-90 hover:bg-opacity-100 transition-opacity text-white"
             >
-              HOW TO PLAY
+              TUTORIAL
             </Button>
           </div>
 
@@ -62,41 +59,6 @@ export default function HomeScreen() {
           </p>
         </div>
       </div>
-
-      <Modal
-        isOpen={showRules}
-        onClose={() => setShowRules(false)}
-        title="How to Play"
-        theme="parchment"
-        size="medium"
-      >
-        <div className="space-y-4 text-sm">
-          <div>
-            <h3 className="font-semibold mb-1 text-medieval-stone-dark">Objective</h3>
-            <p className="text-medieval-stone-dark">Each team (Red and Blue) tries to assassinate the opposing team's King first.</p>
-          </div>
-          
-          <div>
-            <h3 className="font-semibold mb-1 text-medieval-stone-dark">Setup</h3>
-            <p className="text-medieval-stone-dark">Players are secretly assigned roles and teams, and then are randomly assigned into two physical rooms.</p>
-          </div>
-          
-          <div>
-            <h3 className="font-semibold mb-1 text-medieval-stone-dark">Gameplay</h3>
-            <ul className="list-disc list-inside space-y-1 text-medieval-stone-dark">
-              <li>Elect leaders by pointing at players. If more than 50% of the room point at you, you become leader.</li>
-              <li>Leaders can send players between rooms (with a cooldown timer).</li>
-              <li>Use special abilities (explained in the app)</li>
-              <li>Assassins must eliminate the enemy King</li>
-            </ul>
-          </div>
-          
-          <div>
-            <h3 className="font-semibold mb-1 text-medieval-stone-dark">Victory</h3>
-            <p className="text-medieval-stone-dark">The game ends when an Assassin attempts to kill a player. If it was the opposing King their team wins, otherwise they lose.</p>
-          </div>
-        </div>
-      </Modal>
     </MedievalBackground>
   );
 }

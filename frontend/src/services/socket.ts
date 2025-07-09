@@ -164,14 +164,6 @@ class SocketService {
       }
     });
 
-    this.socket.on('pointing_changed', (data: any) => {
-      // Update pointing in game state
-      const gameState = store.gameState;
-      if (gameState && gameState.players[data.playerId]) {
-        gameState.players[data.playerId].pointingAt = data.targetId;
-        store.setGameState({ ...gameState });
-      }
-    });
 
     this.socket.on('leader_elected', (data: any) => {
       console.log(`🟢 LEADER_ELECTED received: Room ${data.roomIndex}, Leader: ${data.leaderId}`);
@@ -379,10 +371,6 @@ class SocketService {
     useGameStore.getState().setRoomChangeRequired(false);
   }
   
-  pointAtPlayer(targetId: string | null): void {
-    if (!this.socket) return;
-    this.socket.emit('point_at_player', { targetId });
-  }
   
   declareLeader(): void {
     if (!this.socket) return;

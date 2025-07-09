@@ -11,21 +11,39 @@ import RoomChangeModal from '../components/game/RoomChangeModal';
 import MedievalBackground from '../components/common/MedievalBackground';
 import { Clock, Eye, BookOpen, Settings, Crown, DoorOpen, Users, Shield, Info, Zap, Swords, DoorClosed, Hammer, UserX, Bell } from 'lucide-react';
 import clsx from 'clsx';
+import { TutorialGameState, TutorialPlayer } from '../data/tutorialMockData';
 
-export default function GameScreen() {
+interface GameScreenProps {
+  tutorialMode?: boolean;
+  tutorialData?: {
+    gameState: TutorialGameState;
+    myRole: TutorialPlayer['role'];
+    currentRoom: 0 | 1;
+    players: TutorialPlayer[];
+    timers: {
+      room0: number | null;
+      room1: number | null;
+    };
+  };
+  onTutorialInteraction?: (action: string) => void;
+}
+
+export default function GameScreen({ 
+  tutorialMode = false, 
+  tutorialData,
+  onTutorialInteraction
+}: GameScreenProps = {}) {
   const navigate = useNavigate();
-  const { 
-    gameState, 
-    myRole, 
-    currentRoom, 
-    roomChangeRequired,
-    liveTimers,
-    getMyPlayer,
-    getPlayersInMyRoom,
-    getOtherRoomPlayerCount,
-    amILeader,
-    canIAssassinate
-  } = useGameStore();
+  const gameStoreData = useGameStore();
+  
+  // Use tutorial data if in tutorial mode, otherwise use game store data
+  const gameState = tutorialMode ? tutorialData?.gameState : gameStoreData.gameState;
+  const myRole = tutorialMode ? tutorialData?.myRole : gameStoreData.myRole;
+  const currentRoom = tutorialMode ? tutorialData?.currentRoom : gameStoreData.currentRoom;
+  const roomChangeRequired = tutorialMode ? false : gameStoreData.roomChangeRequired;
+  const liveTimers = tutorialMode ? 
+    { room0: tutorialData?.timers.room0, room1: tutorialData?.timers.room1 } : 
+    gameStoreData.liveTimers;
   
   const [showRules, setShowRules] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -39,11 +57,46 @@ export default function GameScreen() {
   const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
   const [selectedKickTarget, setSelectedKickTarget] = useState<string | null>(null);
 
-  useTimer(); // Start live countdown
+  if (!tutorialMode) {
+    useTimer(); // Start live countdown only in real game mode
+  }
 
-  const myPlayer = getMyPlayer();
-  const playersInRoom = getPlayersInMyRoom();
-  const otherRoomCount = getOtherRoomPlayerCount();
+  // Tutorial mode player functions
+  const getTutorialMyPlayer = () => {
+    if (!tutorialData) return null;
+    return tutorialData.players.find(p => p.name === 'You');
+  };
+
+  const getTutorialPlayersInRoom = () => {
+    if (!tutorialData) return [];
+    return tutorialData.players.filter(p => p.currentRoom === currentRoom).map(p => ({
+      ...p,
+      socketId: p.id,
+      connected: true,
+      isReady: true,
+      isRoleReady: true,
+      isRoomConfirmed: true,
+      hasUsedAbility: p.hasUsedAbility || false,
+      isHost: p.isHost || false
+    }));
+  };
+
+  const getTutorialOtherRoomCount = () => {
+    if (!tutorialData) return 0;
+    return tutorialData.players.filter(p => p.currentRoom !== currentRoom).length;
+  };
+
+  const getTutorialAmILeader = () => {
+    const tutorialMyPlayer = getTutorialMyPlayer();
+    return tutorialMyPlayer?.isLeader || false;
+  };
+
+  // Use tutorial functions or game store functions based on mode
+  const myPlayer = tutorialMode ? getTutorialMyPlayer() : gameStoreData.getMyPlayer();
+  const playersInRoom = tutorialMode ? getTutorialPlayersInRoom() : gameStoreData.getPlayersInMyRoom();
+  const otherRoomCount = tutorialMode ? getTutorialOtherRoomCount() : gameStoreData.getOtherRoomPlayerCount();
+  const amILeader = tutorialMode ? getTutorialAmILeader : gameStoreData.amILeader;
+  const canIAssassinate = tutorialMode ? () => true : gameStoreData.canIAssassinate;
 
   // Handle game restart - navigate to lobby when phase changes to lobby
   useEffect(() => {
@@ -70,18 +123,18 @@ export default function GameScreen() {
   const roomName = currentRoom === 0 ? 'A' : 'B';
   const otherRoomName = currentRoom === 0 ? 'B' : 'A';
   // Timer values with fallback to default if game is in playing phase
-  const myRoomTimer = liveTimers[currentRoom === 0 ? 'room0' : 'room1'];
-  const otherRoomTimer = liveTimers[currentRoom === 0 ? 'room1' : 'room0'];
+  const myRoomTimer = currentRoom !== undefined ? liveTimers[currentRoom === 0 ? 'room0' : 'room1'] : null;
+  const otherRoomTimer = currentRoom !== undefined ? liveTimers[currentRoom === 0 ? 'room1' : 'room0'] : null;
   
   // If timers are null but game is in playing phase, they should be active
-  const effectiveMyRoomTimer = gameState.phase === 'playing' && myRoomTimer === null ? 120 : myRoomTimer;
-  const effectiveOtherRoomTimer = gameState.phase === 'playing' && otherRoomTimer === null ? 120 : otherRoomTimer;
+  const effectiveMyRoomTimer = gameState?.phase === 'playing' && myRoomTimer === null ? 120 : myRoomTimer;
+  const effectiveOtherRoomTimer = gameState?.phase === 'playing' && otherRoomTimer === null ? 120 : otherRoomTimer;
 
   // Helper functions for role info and abilities
   const getRoleInfo = () => {
     const infos: Record<string, string> = {
       KING: 'Stay alive! If identified by the enemy Assassin, your team loses.',
-      ASSASSIN: 'Identify and publicly name the opposing King.',
+      ASSASSIN: 'Identify and publicly name the opposing King. In 8+ player games you must show your full role to your Swordsmith first.',
       GATEKEEPER: 'Send any player in your room to the other room.',
       SWORDSMITH: 'Confirm when your Assassin visits you.',
       GUARD: 'Protect your King by being in the same room.',
@@ -182,8 +235,8 @@ export default function GameScreen() {
   };
 
   // Timer display helper
-  const renderTimer = (timer: number | null, label: string) => {
-    if (timer === null) {
+  const renderTimer = (timer: number | null | undefined, label: string) => {
+    if (timer === null || timer === undefined) {
       return (
         <div className="flex items-center gap-2 text-medieval-stone-light text-sm font-medium">
           <Clock size={16} />
@@ -220,7 +273,10 @@ export default function GameScreen() {
     <MedievalBackground variant="chamber">
       <div className="min-h-screen flex flex-col safe-top safe-bottom">
         {/* Medieval Timer Bar */}
-        <div className="px-4 py-3 bg-surface-dark border-b-2 border-medieval-metal-gold">
+        <div 
+          className="px-4 py-3 bg-surface-dark border-b-2 border-medieval-metal-gold"
+          data-tutorial="room-timers"
+        >
           <div className="flex justify-between items-center">
             {renderTimer(effectiveMyRoomTimer, `Room ${roomName}`)}
             {renderTimer(effectiveOtherRoomTimer, `Room ${otherRoomName}`)}
@@ -228,12 +284,14 @@ export default function GameScreen() {
         </div>
 
       {/* Full-screen room change notification */}
-      <RoomChangeModal
-        isVisible={roomChangeRequired}
-        newRoom={currentRoom}
-        onConfirm={() => socketService.confirmRoom(currentRoom)}
-        blocking={true}
-      />
+      {currentRoom !== undefined && (
+        <RoomChangeModal
+          isVisible={roomChangeRequired}
+          newRoom={currentRoom}
+          onConfirm={() => socketService.confirmRoom(currentRoom)}
+          blocking={true}
+        />
+      )}
 
         {/* Main content */}
         <div className="flex-1 p-4 space-y-4 overflow-y-auto">
@@ -242,8 +300,12 @@ export default function GameScreen() {
             <Button
               variant="secondary"
               size="medium"
-              onClick={() => setShowFullScreen(true)}
+              onClick={() => {
+                setShowFullScreen(true);
+                onTutorialInteraction?.('show-role-clicked');
+              }}
               className="bg-medieval-stone-dark text-white border-2 border-medieval-stone-medium flex flex-col items-center gap-2 py-4 hover:bg-medieval-stone-medium"
+              data-tutorial="show-role-button"
             >
               <Eye size={24} />
               <span className="text-sm font-medium">Show Role</span>
@@ -251,8 +313,12 @@ export default function GameScreen() {
             <Button
               variant="secondary"
               size="medium"
-              onClick={() => setShowRoleInfo(true)}
+              onClick={() => {
+                setShowRoleInfo(true);
+                onTutorialInteraction?.('role-info-clicked');
+              }}
               className="bg-medieval-stone-dark text-white border-2 border-medieval-stone-medium flex flex-col items-center gap-2 py-4 hover:bg-medieval-stone-medium"
+              data-tutorial="role-info-button"
             >
               <Info size={24} />
               <span className="text-sm font-medium">Role Info</span>
@@ -260,8 +326,12 @@ export default function GameScreen() {
             <Button
               variant="secondary"
               size="medium"
-              onClick={handleAbilityClick}
+              onClick={() => {
+                handleAbilityClick();
+                onTutorialInteraction?.('ability-clicked');
+              }}
               className="bg-medieval-stone-dark text-white border-2 border-medieval-stone-medium flex flex-col items-center gap-2 py-4 hover:bg-medieval-stone-medium"
+              data-tutorial="ability-button"
             >
               <Zap size={24} />
               <span className="text-sm font-medium">{getAbilityButtonText()}</span>
@@ -280,20 +350,25 @@ export default function GameScreen() {
           </div>
 
           {/* Players in room */}
-          <div className="bg-surface-medium rounded-lg p-4 border border-medieval-stone-light">
+          <div 
+            className="bg-surface-medium rounded-lg p-4 border border-medieval-stone-light"
+            data-tutorial="player-list"
+          >
             <div className="flex items-center gap-2 mb-3">
               <Users size={20} className="text-medieval-metal-gold" />
               <h3 className="font-semibold text-white text-lg drop-shadow-md">Players in Your Room:</h3>
             </div>
             <PlayerList 
               players={playersInRoom}
-              showPointing={true}
               showLeaderControls={amILeader()}
             />
           </div>
 
           {/* Other room info */}
-          <div className="p-3 bg-surface-light rounded-lg border border-medieval-stone-light">
+          <div 
+            className="p-3 bg-surface-light rounded-lg border border-medieval-stone-light"
+            data-tutorial="other-room-count"
+          >
             <div className="flex items-center gap-2">
               <DoorOpen size={16} className="text-medieval-stone-light" />
               <p className="text-sm text-gray-300">
@@ -304,7 +379,10 @@ export default function GameScreen() {
 
           {/* Leader section */}
           {amILeader() ? (
-            <div className="p-4 bg-medieval-metal-gold bg-opacity-20 border-4 border-medieval-metal-gold rounded-lg text-center">
+            <div 
+              className="p-4 bg-medieval-metal-gold bg-opacity-20 border-4 border-medieval-metal-gold rounded-lg text-center"
+              data-tutorial="leader-status"
+            >
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Crown size={32} className="text-medieval-metal-gold" />
               </div>
@@ -319,9 +397,16 @@ export default function GameScreen() {
           ) : (
             <Button
               variant="medieval-gold"
-              onClick={() => socketService.declareLeader()}
+              onClick={() => {
+                if (tutorialMode) {
+                  onTutorialInteraction?.('declare-leader-clicked');
+                } else {
+                  socketService.declareLeader();
+                }
+              }}
               fullWidth
               className="bg-medieval-metal-gold bg-opacity-80 border-2 border-medieval-metal-gold text-lg font-bold"
+              data-tutorial="leader-button"
             >
               <Crown size={24} className="mr-2" />
               DECLARE MYSELF LEADER
@@ -339,6 +424,7 @@ export default function GameScreen() {
                 onClick={() => setShowRoster(true)}
                 className="border-2 border-current flex flex-col items-center gap-1 py-3 flex-1"
                 fullWidth
+                data-tutorial="roster-button"
               >
                 <Users size={20} />
                 <span className="text-xs font-medium">Roster</span>
@@ -349,6 +435,7 @@ export default function GameScreen() {
                 onClick={() => setShowRules(true)}
                 className="flex flex-col items-center gap-1 py-3 flex-1"
                 fullWidth
+                data-tutorial="rules-button"
               >
                 <BookOpen size={20} />
                 <span className="text-xs font-medium">Rules</span>
@@ -376,11 +463,11 @@ export default function GameScreen() {
             </div>
             <div>
               <h4 className="font-semibold text-medieval-metal-gold">Leader Election</h4>
-              <p className="text-gray-300">Point at a player. Majority makes them Leader.</p>
+              <p className="text-gray-300">Elect a leader (with more than 50% of the room pointing at them).</p>
             </div>
             <div>
               <h4 className="font-semibold text-medieval-metal-gold">Leader Powers</h4>
-              <p className="text-gray-300">After 2 minutes, can send one player (other than yourself) to the other room.</p>
+              <p className="text-gray-300">After 2 minutes, can send one player (other than themselves) to the other room.</p>
             </div>
             <div>
               <h4 className="font-semibold text-medieval-metal-gold">Assassination</h4>
@@ -592,7 +679,7 @@ export default function GameScreen() {
               <span>Send to other room:</span>
             </div>
             <div className="space-y-2">
-              {getPlayersInMyRoom().map(player => (
+              {playersInRoom.map((player: any) => (
                 <label 
                   key={player.id} 
                   className={clsx(
@@ -654,7 +741,7 @@ export default function GameScreen() {
               <span>Which player showed you their full Team and Role?</span>
             </div>
             <div className="space-y-2">
-              {getPlayersInMyRoom().map(player => (
+              {playersInRoom.map((player: any) => (
                 <label 
                   key={player.id} 
                   className={clsx(

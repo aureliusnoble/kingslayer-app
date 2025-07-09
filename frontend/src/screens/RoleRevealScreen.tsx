@@ -9,10 +9,11 @@ import { RoleType } from '../shared';
 import clsx from 'clsx';
 import MedievalBackground from '../components/common/MedievalBackground';
 import { Crown, Swords, Shield, DoorClosed, Hammer, UserX, Bell, Info, Eye, CheckCircle } from 'lucide-react';
+import { TutorialGameState, TutorialPlayer } from '../data/tutorialMockData';
 
 const roleInfo: Record<RoleType, string> = {
   KING: 'Stay alive! If the opposing Assassin correctly identifies you, your team loses.',
-  ASSASSIN: 'Identify and publicly name the opposing King. You have one chance. In 8+ player games, you must visit your Swordsmith first.',
+  ASSASSIN: 'Identify and publicly name the opposing King. You have one chance. In 8+ player games, you must show your full role to your Swordsmith first.',
   GATEKEEPER: 'Once per game, secretly send any player in your room to the other room using the app.',
   SWORDSMITH: 'Your team\'s Assassin must reveal themselves to you before they can assassinate. Confirm their visit in the app.',
   GUARD: 'Your King cannot be assassinated while you\'re in the same room. Your protection is passive.',
@@ -20,12 +21,35 @@ const roleInfo: Record<RoleType, string> = {
   SERVANT: 'You know who your King is from the start. Use this knowledge to protect them.'
 };
 
-export default function RoleRevealScreen() {
-  const { myRole, servantKingId, gameState, currentRoom, roomChangeRequired, roomConfirmationProgress } = useGameStore();
+interface RoleRevealScreenProps {
+  tutorialMode?: boolean;
+  tutorialData?: {
+    gameState: TutorialGameState;
+    myRole: TutorialPlayer['role'];
+    servantKingId?: string;
+    currentRoom: 0 | 1;
+  };
+  onTutorialInteraction?: (action: string) => void;
+}
+
+export default function RoleRevealScreen({ 
+  tutorialMode = false, 
+  tutorialData,
+  onTutorialInteraction
+}: RoleRevealScreenProps = {}) {
+  const gameStoreData = useGameStore();
   const [showInfo, setShowInfo] = useState(false);
   const [ready, setReady] = useState(false);
   const [showRoomAssignment, setShowRoomAssignment] = useState(false);
   const [showFullScreen, setShowFullScreen] = useState(false);
+
+  // Use tutorial data if in tutorial mode, otherwise use game store data
+  const myRole = tutorialMode ? tutorialData?.myRole : gameStoreData.myRole;
+  const servantKingId = tutorialMode ? tutorialData?.servantKingId : gameStoreData.servantKingId;
+  const gameState = tutorialMode ? tutorialData?.gameState : gameStoreData.gameState;
+  const currentRoom = tutorialMode ? tutorialData?.currentRoom : gameStoreData.currentRoom;
+  const roomChangeRequired = tutorialMode ? false : gameStoreData.roomChangeRequired;
+  const roomConfirmationProgress = tutorialMode ? null : gameStoreData.roomConfirmationProgress;
 
   useEffect(() => {
     if (ready && roomChangeRequired) {
@@ -37,17 +61,33 @@ export default function RoleRevealScreen() {
 
   const handleReady = () => {
     setReady(true);
-    // Send ready state to backend
-    socketService.setRoleReady();
-    // Small delay to show room assignment after ready
-    setTimeout(() => {
-      setShowRoomAssignment(true);
-    }, 500);
+    
+    if (tutorialMode) {
+      onTutorialInteraction?.('role-ready');
+      // Small delay to show room assignment after ready
+      setTimeout(() => {
+        setShowRoomAssignment(true);
+      }, 500);
+    } else {
+      // Send ready state to backend
+      socketService.setRoleReady();
+      // Small delay to show room assignment after ready
+      setTimeout(() => {
+        setShowRoomAssignment(true);
+      }, 500);
+    }
   };
 
   const handleConfirmRoom = () => {
-    socketService.confirmRoom(currentRoom);
-    setShowRoomAssignment(false);
+    if (tutorialMode) {
+      onTutorialInteraction?.('room-confirmed');
+      setShowRoomAssignment(false);
+    } else {
+      if (currentRoom !== undefined) {
+        socketService.confirmRoom(currentRoom);
+      }
+      setShowRoomAssignment(false);
+    }
   };
 
   const getServantKing = () => {
@@ -67,11 +107,15 @@ export default function RoleRevealScreen() {
             
             <div className="space-y-4">
               {/* Real Role Card */}
-              <div className={clsx(
-                'p-4 rounded-lg border-4 transition-all duration-300 animate-card-flip',
-                'bg-surface-medium',
-                myRole.team === 'RED' ? 'border-red-primary shadow-lg shadow-red-primary/20' : 'border-blue-primary shadow-lg shadow-blue-primary/20'
-              )}>
+              <div 
+                className={clsx(
+                  'p-4 rounded-lg border-4 transition-all duration-300 animate-card-flip',
+                  'bg-surface-medium',
+                  myRole.team === 'RED' ? 'border-red-primary shadow-lg shadow-red-primary/20' : 'border-blue-primary shadow-lg shadow-blue-primary/20'
+                )}
+                data-tutorial="role-card"
+                data-tutorial-type="real-role"
+              >
                 <div className="flex items-center gap-2 mb-2">
                   <UserX size={16} className="text-medieval-metal-gold" />
                   <p className="text-sm font-medium text-gray-300">REAL ROLE:</p>
@@ -82,17 +126,26 @@ export default function RoleRevealScreen() {
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-white">SPY</p>
-                    <p className="text-lg font-semibold text-medieval-metal-gold">Team: {myRole.team}</p>
+                    <p 
+                      className="text-lg font-semibold text-medieval-metal-gold"
+                      data-tutorial="team-border"
+                    >
+                      Team: {myRole.team}
+                    </p>
                   </div>
                 </div>
               </div>
 
               {/* Fake Role Card */}
-              <div className={clsx(
-                'p-4 rounded-lg border-4 transition-all duration-300 animate-card-flip',
-                'bg-surface-medium',
-                myRole.fakeRole.team === 'RED' ? 'border-red-primary shadow-lg shadow-red-primary/20' : 'border-blue-primary shadow-lg shadow-blue-primary/20'
-              )}>
+              <div 
+                className={clsx(
+                  'p-4 rounded-lg border-4 transition-all duration-300 animate-card-flip',
+                  'bg-surface-medium',
+                  myRole.fakeRole.team === 'RED' ? 'border-red-primary shadow-lg shadow-red-primary/20' : 'border-blue-primary shadow-lg shadow-blue-primary/20'
+                )}
+                data-tutorial="fake-role-card"
+                data-tutorial-type="fake-role"
+              >
                 <div className="flex items-center gap-2 mb-2">
                   <Eye size={16} className="text-medieval-metal-gold" />
                   <p className="text-sm font-medium text-gray-300">APPEARS AS:</p>
@@ -123,8 +176,12 @@ export default function RoleRevealScreen() {
             <Button
               variant="medieval-blue"
               fullWidth
-              onClick={() => setShowInfo(true)}
+              onClick={() => {
+                setShowInfo(true);
+                onTutorialInteraction?.('info-button-clicked');
+              }}
               className="bg-blue-primary bg-opacity-90 border-2 border-blue-primary shadow-lg"
+              data-tutorial="info-button"
             >
               <Info size={16} className="mr-2" />
               View Role Info
@@ -136,6 +193,7 @@ export default function RoleRevealScreen() {
                 fullWidth
                 onClick={handleReady}
                 className="bg-medieval-metal-gold bg-opacity-90 border-2 border-medieval-metal-gold shadow-lg"
+                data-tutorial="ready-button"
               >
                 <CheckCircle size={16} className="mr-2" />
                 I'M READY
@@ -171,12 +229,14 @@ export default function RoleRevealScreen() {
           />
 
           {/* Kick notification modal */}
-          <RoomChangeModal
-            isVisible={roomChangeRequired}
-            newRoom={currentRoom}
-            onConfirm={() => socketService.confirmRoom(currentRoom)}
-            blocking={true}
-          />
+          {currentRoom !== undefined && (
+            <RoomChangeModal
+              isVisible={roomChangeRequired}
+              newRoom={currentRoom}
+              onConfirm={() => socketService.confirmRoom(currentRoom)}
+              blocking={true}
+            />
+          )}
         </div>
       </MedievalBackground>
     );
@@ -270,12 +330,14 @@ export default function RoleRevealScreen() {
           />
 
           {/* Kick notification modal */}
-          <RoomChangeModal
-            isVisible={roomChangeRequired}
-            newRoom={currentRoom}
-            onConfirm={() => socketService.confirmRoom(currentRoom)}
-            blocking={true}
-          />
+          {currentRoom !== undefined && (
+            <RoomChangeModal
+              isVisible={roomChangeRequired}
+              newRoom={currentRoom}
+              onConfirm={() => socketService.confirmRoom(currentRoom)}
+              blocking={true}
+            />
+          )}
         </div>
       </MedievalBackground>
     );
@@ -288,11 +350,15 @@ export default function RoleRevealScreen() {
         <div className="max-w-sm w-full space-y-6">
           <h1 className="text-2xl font-bold text-center text-white font-display">YOUR SECRET ROLE</h1>
           
-          <div className={clsx(
-            'p-8 rounded-lg text-center border-4 transition-all duration-300 animate-card-flip',
-            'bg-surface-medium',
-            myRole.team === 'RED' ? 'border-red-primary shadow-lg shadow-red-primary/20' : 'border-blue-primary shadow-lg shadow-blue-primary/20'
-          )}>
+          <div 
+            className={clsx(
+              'p-8 rounded-lg text-center border-4 transition-all duration-300 animate-card-flip',
+              'bg-surface-medium',
+              myRole.team === 'RED' ? 'border-red-primary shadow-lg shadow-red-primary/20' : 'border-blue-primary shadow-lg shadow-blue-primary/20'
+            )}
+            data-tutorial="role-card"
+            data-tutorial-type="normal-role"
+          >
             <div className="text-6xl mb-4">
               {/* Role icons - using Lucide icons */}
               {myRole.type === 'KING' && <Crown size={72} className="text-medieval-metal-gold mx-auto" />}
@@ -302,14 +368,23 @@ export default function RoleRevealScreen() {
               {myRole.type === 'GUARD' && <Shield size={72} className="text-medieval-metal-gold mx-auto" />}
             </div>
             <p className="text-3xl font-bold mb-2 text-white">{myRole.type}</p>
-            <p className="text-xl font-semibold text-medieval-metal-gold drop-shadow-lg">Team: {myRole.team}</p>
+            <p 
+              className="text-xl font-semibold text-medieval-metal-gold drop-shadow-lg"
+              data-tutorial="team-border"
+            >
+              Team: {myRole.team}
+            </p>
           </div>
 
           <Button
             variant="medieval-blue"
             fullWidth
-            onClick={() => setShowInfo(true)}
+            onClick={() => {
+              setShowInfo(true);
+              onTutorialInteraction?.('info-button-clicked');
+            }}
             className="bg-blue-primary bg-opacity-90 border-2 border-blue-primary shadow-lg"
+            data-tutorial="info-button"
           >
             <Info size={16} className="mr-2" />
             View Role Info
@@ -321,6 +396,7 @@ export default function RoleRevealScreen() {
               fullWidth
               onClick={handleReady}
               className="bg-medieval-metal-gold bg-opacity-90 border-2 border-medieval-metal-gold shadow-lg"
+              data-tutorial="ready-button"
             >
               <CheckCircle size={16} className="mr-2" />
               I'M READY
@@ -373,12 +449,14 @@ export default function RoleRevealScreen() {
         />
 
         {/* Kick notification modal */}
-        <RoomChangeModal
-          isVisible={roomChangeRequired}
-          newRoom={currentRoom === 0 ? 1 : 0}
-          onConfirm={() => socketService.confirmRoom(currentRoom === 0 ? 1 : 0)}
-          blocking={true}
-        />
+        {currentRoom !== undefined && (
+          <RoomChangeModal
+            isVisible={roomChangeRequired}
+            newRoom={currentRoom === 0 ? 1 : 0}
+            onConfirm={() => socketService.confirmRoom(currentRoom === 0 ? 1 : 0)}
+            blocking={true}
+          />
+        )}
       </div>
     </MedievalBackground>
   );
