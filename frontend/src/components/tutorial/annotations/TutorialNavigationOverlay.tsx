@@ -4,8 +4,6 @@ import Button from '../../common/Button';
 import { useTutorialStore } from '../../../stores/tutorialStore';
 
 interface TutorialNavigationOverlayProps {
-  currentStep: number;
-  totalSteps: number;
   onNext: () => void;
   onPrevious: () => void;
   canNavigateNext: boolean;
@@ -13,8 +11,6 @@ interface TutorialNavigationOverlayProps {
 }
 
 export default function TutorialNavigationOverlay({
-  currentStep,
-  totalSteps,
   onNext,
   onPrevious,
   canNavigateNext,

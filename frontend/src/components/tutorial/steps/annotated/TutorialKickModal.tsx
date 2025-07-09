@@ -97,8 +97,6 @@ export default function TutorialKickModal({ onContinue, onGlobalPrevious, onGlob
   return (
     <div className="relative w-full h-full">
       <TutorialNavigationOverlay
-        currentStep={currentAnnotationStep}
-        totalSteps={annotationSteps.length}
         onNext={handleNext}
         onPrevious={handlePrevious}
         canNavigateNext={canNavigateNext}

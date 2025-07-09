@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Info } from 'lucide-react';
 import { TutorialOverlay } from '../../annotations';
 import TutorialNavigationOverlay from '../../annotations/TutorialNavigationOverlay';
 import RoleRevealScreen from '../../../../screens/RoleRevealScreen';
@@ -105,8 +104,6 @@ export default function TutorialRoleReveal({ onContinue, onGlobalPrevious, onGlo
   return (
     <div className="relative w-full h-full">
       <TutorialNavigationOverlay
-        currentStep={currentAnnotationStep}
-        totalSteps={annotationSteps.length}
         onNext={handleNext}
         onPrevious={handlePrevious}
         canNavigateNext={canNavigateNext}

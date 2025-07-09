@@ -11,8 +11,6 @@ interface TutorialLayoutProps {
   onNext: () => void;
   onPrevious: () => void;
   onExit: () => void;
-  currentStep: number;
-  totalSteps: number;
   showNavigation?: boolean;
   canNavigateNext?: boolean;
   canNavigatePrevious?: boolean;
@@ -25,8 +23,6 @@ export default function TutorialLayout({
   onNext,
   onPrevious,
   onExit,
-  currentStep,
-  totalSteps,
   showNavigation = true,
   canNavigateNext = true,
   canNavigatePrevious = true,

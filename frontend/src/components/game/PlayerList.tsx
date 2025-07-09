@@ -13,8 +13,7 @@ export default function PlayerList({
   players, 
   showLeaderControls = false 
 }: PlayerListProps) {
-  const { playerId, getMyPlayer, amILeader, liveTimers, currentRoom } = useGameStore();
-  const myPlayer = getMyPlayer();
+  const { playerId, amILeader, liveTimers, currentRoom } = useGameStore();
   
   // Check if kicks are available (timer = 0)
   const myRoomTimer = liveTimers[currentRoom === 0 ? 'room0' : 'room1'];

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Crown } from 'lucide-react';
 import { TutorialOverlay } from '../../annotations';
 import TutorialNavigationOverlay from '../../annotations/TutorialNavigationOverlay';
 import GameScreen from '../../../../screens/GameScreen';
@@ -147,8 +146,6 @@ export default function TutorialGameInterface({ onContinue, onGlobalPrevious, on
   return (
     <div className="relative w-full h-full">
       <TutorialNavigationOverlay
-        currentStep={currentAnnotationStep}
-        totalSteps={annotationSteps.length}
         onNext={handleNext}
         onPrevious={handlePrevious}
         canNavigateNext={canNavigateNext}

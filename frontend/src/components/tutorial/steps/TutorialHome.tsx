@@ -1,4 +1,4 @@
-import { Clock, BookOpen } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 import Button from '../../common/Button';
 
 interface TutorialHomeProps {

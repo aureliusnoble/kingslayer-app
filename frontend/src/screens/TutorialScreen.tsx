@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle } from 'lucide-react';
 import { useTutorialStore } from '../stores/tutorialStore';
 import TutorialLayout from '../components/tutorial/TutorialLayout';
 import TutorialHome from '../components/tutorial/steps/TutorialHome';
@@ -237,8 +236,6 @@ export default function TutorialScreen() {
     <>
       <TutorialLayout
         title={stepData.title}
-        currentStep={currentStep}
-        totalSteps={totalSteps}
         onNext={handleNext}
         onPrevious={handlePrevious}
         onExit={handleExit}
