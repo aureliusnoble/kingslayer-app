@@ -6,11 +6,16 @@ import { useGameStore } from '../stores/gameStore';
 import MedievalBackground from '../components/common/MedievalBackground';
 import MedievalInput from '../components/common/MedievalInput';
 import CodeInput, { CodeInputRef } from '../components/common/CodeInput';
-import { ChevronLeft, DoorOpen, ClipboardCheck, AlertTriangle } from 'lucide-react';
+import ErrorDisplay from '../components/common/ErrorDisplay';
+import { useErrorHandler, getErrorTypeFromMessage } from '../hooks/useErrorHandler';
+import { useToast } from '../components/common/ToastProvider';
+import { ChevronLeft, DoorOpen, ClipboardCheck } from 'lucide-react';
 
 export default function JoinGameScreen() {
   const navigate = useNavigate();
   const { loading, error, roomCode: storeRoomCode, gameState } = useGameStore();
+  const { error: localError, setError, clearError } = useErrorHandler();
+  const { showSuccess } = useToast();
   const [playerName, setPlayerName] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const codeInputRef = useRef<CodeInputRef>(null);
@@ -64,8 +69,10 @@ export default function JoinGameScreen() {
     try {
       const text = await navigator.clipboard.readText();
       handleCodeChange(text);
+      showSuccess('Code pasted successfully!');
     } catch (err) {
       console.error('Failed to read clipboard:', err);
+      setError('Failed to paste from clipboard. Please try typing the code manually.', 'validation');
     }
   };
 
@@ -139,20 +146,23 @@ export default function JoinGameScreen() {
           </div>
 
           {/* Error Display */}
-          {error && (
-            <div className="p-3 bg-red-primary bg-opacity-20 text-red-highlight rounded-lg text-sm border border-red-primary">
-              <div className="flex items-start gap-2">
-                <AlertTriangle size={16} className="text-red-highlight mt-0.5" />
-                <div>
-                  <p className="font-medium">{error}</p>
-                  {error.includes('name is already taken') && (
-                    <p className="text-xs mt-1 text-red-highlight opacity-80">
-                      Try adding a number or changing your name slightly.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
+          {(error || localError) && (
+            <ErrorDisplay
+              error={error || localError?.message || null}
+              type={error ? getErrorTypeFromMessage(error) : (localError?.type || 'generic')}
+              onRetry={() => {
+                clearError();
+                if (roomCode.length === 6 && playerName.trim()) {
+                  handleJoinGame();
+                }
+              }}
+              onDismiss={() => {
+                clearError();
+                // Clear store error would need to be added to game store
+              }}
+              onHome={() => navigate('/')}
+              size="medium"
+            />
           )}
 
           {/* Join Button */}

@@ -80,7 +80,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setConnected: (connected) => set({ connected }),
   setRoomCode: (roomCode) => set({ roomCode }),
   setPlayerId: (playerId) => set({ playerId }),
-  setGameState: (gameState) => set({ gameState }),
+  setGameState: (gameState) => {
+    // Debug logging for connection states
+    if (import.meta.env.DEV) {
+      console.log('🏪 STORE: Setting game state - Player connection states:');
+      Object.entries(gameState.players).forEach(([playerId, player]: [string, any]) => {
+        console.log(`  Player ${player.name} (${playerId}): connected=${player.connected}, ready=${player.isReady}`);
+      });
+    }
+    
+    set({ gameState });
+  },
   setMyRole: (role, servantKingId) => set({ myRole: role, servantKingId }),
   clearMyRole: () => set({ myRole: null, servantKingId: null }),
   setCurrentRoom: (room) => set({ currentRoom: room }),

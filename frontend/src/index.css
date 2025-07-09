@@ -257,6 +257,63 @@
       transform: scale(1.1);
     }
   }
+
+  /* Toast progress bar animation */
+  @keyframes shrink {
+    from { width: 100%; }
+    to { width: 0%; }
+  }
+
+  /* Skeleton shimmer animation */
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+  
+  .animate-shimmer {
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  /* Input micro-interaction animations */
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-2px); }
+    75% { transform: translateX(2px); }
+  }
+  
+  .animate-shake {
+    animation: shake 0.3s ease-in-out;
+  }
+  
+  .scale-102 {
+    transform: scale(1.02);
+  }
+
+  /* Progressive disclosure animations */
+  .medieval-accordion {
+    border: 2px solid theme('colors.medieval.stone.light');
+    border-radius: 8px;
+    background: theme('colors.medieval.stone.medium');
+    overflow: hidden;
+  }
+  
+  .medieval-accordion:hover {
+    border-color: theme('colors.medieval.metal.gold');
+    box-shadow: 0 0 12px rgba(217, 119, 6, 0.3);
+  }
+  
+  /* Smooth height transitions */
+  .height-auto {
+    height: auto;
+  }
+  
+  .height-0 {
+    height: 0;
+  }
 }
 
 @layer utilities {

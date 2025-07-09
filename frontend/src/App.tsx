@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useGameStore } from './stores/gameStore';
 import { socketService } from './services/socket';
+import ToastProvider from './components/common/ToastProvider';
+import SimpleTransition from './components/common/SimpleTransition';
 import HomeScreen from './screens/HomeScreen';
 import CreateGameScreen from './screens/CreateGameScreen';
 import JoinGameScreen from './screens/JoinGameScreen';
@@ -56,29 +58,33 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen bg-surface-dark portrait-only">
-        <Routes>
-          <Route path="/" element={<HomeScreen />} />
-          <Route path="/create" element={<CreateGameScreen />} />
-          <Route path="/join" element={<JoinGameScreen />} />
-          <Route path="/tutorial" element={<TutorialScreen />} />
-          <Route path="/lobby/:roomCode" element={<AutoJoinScreen />} />
-          <Route 
-            path="/lobby" 
-            element={roomCode ? <LobbyScreen /> : <Navigate to="/" />} 
-          />
-          <Route 
-            path="/role" 
-            element={gameState?.phase === 'setup' ? <RoleRevealScreen /> : getActiveRoute()} 
-          />
-          <Route 
-            path="/game" 
-            element={gameState?.phase === 'playing' ? <GameScreen /> : getActiveRoute()} 
-          />
-          <Route 
-            path="/end" 
-            element={gameState?.phase === 'ended' ? <EndScreen /> : getActiveRoute()} 
-          />
-        </Routes>
+        <ToastProvider>
+          <SimpleTransition>
+            <Routes>
+              <Route path="/" element={<HomeScreen />} />
+              <Route path="/create" element={<CreateGameScreen />} />
+              <Route path="/join" element={<JoinGameScreen />} />
+              <Route path="/tutorial" element={<TutorialScreen />} />
+              <Route path="/lobby/:roomCode" element={<AutoJoinScreen />} />
+              <Route 
+                path="/lobby" 
+                element={roomCode ? <LobbyScreen /> : <Navigate to="/" />} 
+              />
+              <Route 
+                path="/role" 
+                element={gameState?.phase === 'setup' ? <RoleRevealScreen /> : getActiveRoute()} 
+              />
+              <Route 
+                path="/game" 
+                element={gameState?.phase === 'playing' ? <GameScreen /> : getActiveRoute()} 
+              />
+              <Route 
+                path="/end" 
+                element={gameState?.phase === 'ended' ? <EndScreen /> : getActiveRoute()} 
+              />
+            </Routes>
+          </SimpleTransition>
+        </ToastProvider>
       </div>
     </Router>
   );

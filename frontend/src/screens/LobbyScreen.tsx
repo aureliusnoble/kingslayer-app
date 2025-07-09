@@ -7,17 +7,51 @@ import { useGameStore } from '../stores/gameStore';
 import { Player } from '../shared';
 import clsx from 'clsx';
 import MedievalBackground from '../components/common/MedievalBackground';
+import { useToast } from '../components/common/ToastProvider';
 import { LogOut, Copy, Users, Crown, Shield, CheckCircle, Clock, Link, AlertTriangle, UserX } from 'lucide-react';
 
 export default function LobbyScreen() {
   const navigate = useNavigate();
   const { gameState, playerId, amIHost } = useGameStore();
+  const { showSuccess } = useToast();
   const [showKickModal, setShowKickModal] = useState(false);
   const [selectedKickTarget, setSelectedKickTarget] = useState<string | null>(null);
+  const [renderCount, setRenderCount] = useState(0);
 
   if (!gameState) return null;
 
   const players = Object.values(gameState.players);
+  
+  // Debug: Track renders and log player states
+  useEffect(() => {
+    const newRenderCount = renderCount + 1;
+    setRenderCount(newRenderCount);
+    
+    if (import.meta.env.DEV) {
+      console.log(`📺 LOBBY RENDER #${newRenderCount} - Player states:`, 
+        players.map(p => ({
+          name: p.name,
+          connected: p.connected,
+          ready: p.isReady,
+          id: p.id.substring(0, 8)
+        }))
+      );
+    }
+  });
+
+  // Debug: Log when player states change
+  useEffect(() => {
+    if (import.meta.env.DEV && gameState) {
+      console.log('🔄 LOBBY: Game state updated, connection states:', 
+        Object.entries(gameState.players).map(([id, p]) => ({
+          name: p.name,
+          id: id.substring(0, 8),
+          connected: p.connected,
+          ready: p.isReady
+        }))
+      );
+    }
+  }, [gameState]);
   const allReady = players.every((p: Player) => p.isReady);
   const isEvenPlayerCount = players.length % 2 === 0;
   const hasMinPlayers = players.length >= 6;
@@ -25,13 +59,13 @@ export default function LobbyScreen() {
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(gameState.roomCode);
-    // Could add a toast notification here
+    showSuccess('Room code copied');
   };
 
   const handleCopyURL = () => {
     const lobbyURL = `${window.location.origin}/lobby/${gameState.roomCode}`;
     navigator.clipboard.writeText(lobbyURL);
-    // Could add a toast notification here
+    showSuccess('Lobby link copied');
   };
 
   const handleLeave = () => {

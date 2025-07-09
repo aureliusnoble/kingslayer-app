@@ -35,6 +35,9 @@ export class GameManager {
         { players: [] },
         { players: [] }
       ],
+      originalHostId: playerId,
+      leftPlayers: {},
+      previousPlayers: {},
       timers: {}
     };
 
@@ -85,6 +88,38 @@ export class GameManager {
     const game = this.games.get(roomCode);
     if (!game) return null;
 
+    // Check if leaving player is host BEFORE deleting them
+    const leavingPlayer = game.players[playerId];
+    const wasHost = leavingPlayer?.isHost || false;
+
+    // Track player who left (for potential rejoin)
+    if (leavingPlayer) {
+      const now = Date.now();
+      
+      // Basic tracking for leftPlayers
+      if (!game.leftPlayers) game.leftPlayers = {};
+      game.leftPlayers[playerId] = {
+        name: leavingPlayer.name,
+        leftAt: now
+      };
+      
+      // Complete state tracking for full reconnection (only during setup/playing phases)
+      if (game.phase === 'setup' || game.phase === 'playing') {
+        if (!game.previousPlayers) game.previousPlayers = {};
+        
+        // Store complete player state for reconnection
+        game.previousPlayers[leavingPlayer.name.toLowerCase()] = {
+          player: { ...leavingPlayer }, // Deep copy of player state
+          leftAt: now,
+          originalId: playerId
+        };
+        
+        console.log(`[PLAYER LEFT] ${leavingPlayer.name} left game ${game.roomCode} - complete state stored for reconnection`);
+      } else {
+        console.log(`[PLAYER LEFT] ${leavingPlayer.name} left game ${game.roomCode} - basic tracking only (phase: ${game.phase})`);
+      }
+    }
+
     delete game.players[playerId];
     this.playerToGame.delete(playerId);
 
@@ -100,11 +135,12 @@ export class GameManager {
       return null;
     }
 
-    // Transfer host if needed
-    if (game.players[playerId]?.isHost) {
+    // Transfer host if the leaving player was host
+    if (wasHost) {
       const newHostId = Object.keys(game.players)[0];
       if (newHostId) {
         game.players[newHostId].isHost = true;
+        console.log(`[HOST TRANSFER] Player ${game.players[newHostId].name} is now host after ${leavingPlayer.name} left`);
       }
     }
 
@@ -439,6 +475,20 @@ export class GameManager {
           console.log(`[TIMER UPDATE] Room ${game.roomCode}: Room0 ${before.room0} -> ${after.room0}, Room1 ${before.room1} -> ${after.room1}`);
         }
       }
+      
+      // Clean up old previousPlayers data (older than 1 hour)
+      if (game.previousPlayers) {
+        const now = Date.now();
+        const oneHourAgo = now - (60 * 60 * 1000); // 1 hour in milliseconds
+        
+        Object.keys(game.previousPlayers).forEach(playerName => {
+          const playerData = game.previousPlayers![playerName];
+          if (playerData.leftAt < oneHourAgo) {
+            console.log(`[CLEANUP] Removing old previousPlayer data for ${playerName} (left ${new Date(playerData.leftAt).toISOString()})`);
+            delete game.previousPlayers![playerName];
+          }
+        });
+      }
     });
   }
 
@@ -471,6 +521,22 @@ export class GameManager {
     const player = game.players[playerId];
     if (player) {
       player.connected = false;
+      
+      // Store complete player state for potential full reconnection (only during setup/playing phases)
+      if (game.phase === 'setup' || game.phase === 'playing') {
+        if (!game.previousPlayers) game.previousPlayers = {};
+        
+        // Store complete player state (in case they need to fully reconnect later)
+        game.previousPlayers[player.name.toLowerCase()] = {
+          player: { ...player }, // Deep copy of player state
+          leftAt: Date.now(),
+          originalId: playerId
+        };
+        
+        console.log(`[PLAYER DISCONNECTED] ${player.name} disconnected from game ${game.roomCode} - state stored for potential reconnection`);
+      } else {
+        console.log(`[PLAYER DISCONNECTED] ${player.name} disconnected from game ${game.roomCode} - basic tracking only (phase: ${game.phase})`);
+      }
     }
 
     return game;
@@ -510,7 +576,18 @@ export class GameManager {
       player.isLeader = false;
       player.pointingAt = undefined;
       player.currentRoom = 0; // Reset everyone to room 0
+      player.isHost = false; // Reset host status for everyone
     });
+
+    // Reassign host to the original host if they're still in the game
+    if (game.players[game.originalHostId]) {
+      game.players[game.originalHostId].isHost = true;
+      console.log(`[GAME RESTART] Original host ${game.players[game.originalHostId].name} reassigned as host`);
+    } else {
+      // If original host is not in game, current host remains host
+      host.isHost = true;
+      console.log(`[GAME RESTART] Current host ${host.name} remains host (original host not present)`);
+    }
 
     // Reset room state
     game.rooms = [
@@ -527,41 +604,88 @@ export class GameManager {
     // Clear servant info
     game.servantInfo = undefined;
 
+    // Clear left players list (fresh start)
+    game.leftPlayers = {};
+
     console.log(`[GAME RESTART] Game ${game.roomCode} restarted by host ${host.name}`);
 
     return game;
   }
 
   joinGameWithReconnect(roomCode: string, playerName: string, socketId: string, attemptReconnect: boolean = false): 
-    { success: true; game: GameState; playerId: string; isReconnection: boolean } | 
-    { success: false; error: 'GAME_NOT_FOUND' | 'GAME_FULL' | 'NAME_TAKEN' } {
+    { success: true; game: GameState; playerId: string; isReconnection: boolean; timerState?: { room0Timer: number | null; room1Timer: number | null } } | 
+    { success: false; error: 'GAME_NOT_FOUND' | 'GAME_FULL' | 'NAME_TAKEN' | 'GAME_IN_PROGRESS' | 'INVALID_PHASE' | 'NO_PREVIOUS_PLAYER' } {
     
     const game = this.games.get(roomCode.toUpperCase());
     if (!game) return { success: false, error: 'GAME_NOT_FOUND' };
 
-    // Check for reconnection opportunity
+    // Check for simple reconnection (player still in game but disconnected)
     if (attemptReconnect) {
       const disconnectedPlayer = Object.values(game.players).find(p => 
         p.name.toLowerCase() === playerName.toLowerCase() && !p.connected
       );
 
       if (disconnectedPlayer) {
-        // Reconnection case
+        // Simple reconnection case
         disconnectedPlayer.socketId = socketId;
         disconnectedPlayer.connected = true;
         this.playerToGame.set(disconnectedPlayer.id, roomCode.toUpperCase());
         
-        console.log(`[PLAYER RECONNECT] Player ${playerName} reconnected to game ${roomCode}`);
+        // Check if this player should become host
+        this.checkAndAssignHost(game, disconnectedPlayer.id);
+        
+        // Get timer state for reconnection
+        const timerState = this.getTimerStateForReconnection(game);
+        
+        console.log(`[PLAYER SIMPLE RECONNECT] Player ${playerName} reconnected to game ${roomCode}`);
         return { 
           success: true, 
           game, 
           playerId: disconnectedPlayer.id, 
-          isReconnection: true 
+          isReconnection: true,
+          timerState 
         };
       }
     }
 
-    // Check if name is taken by a connected player
+    // Handle different logic based on game phase
+    if (game.phase === 'lobby') {
+      // In lobby phase: allow normal joins, no reconnection validation needed
+      // Skip to normal join logic below
+    } else if (game.phase === 'setup' || game.phase === 'playing') {
+      // In setup/playing phase: only allow reconnection
+      const reconnectionValidation = this.validateReconnection(game, playerName);
+      if (reconnectionValidation.valid && reconnectionValidation.previousPlayerData) {
+        // Full reconnection case - restore complete player state
+        const newPlayerId = generatePlayerId();
+        const restoredPlayer = this.restorePlayerState(game, newPlayerId, socketId, reconnectionValidation.previousPlayerData);
+        
+        // Check if this player should become host
+        this.checkAndAssignHost(game, newPlayerId);
+        
+        // Get timer state for reconnection
+        const timerState = this.getTimerStateForReconnection(game);
+        
+        console.log(`[PLAYER FULL RECONNECT] Player ${playerName} fully reconnected to game ${roomCode}`);
+        return { 
+          success: true, 
+          game, 
+          playerId: newPlayerId, 
+          isReconnection: true,
+          timerState 
+        };
+      }
+
+      // If reconnection validation failed in setup/playing phase, return error
+      if (!reconnectionValidation.valid) {
+        return { success: false, error: reconnectionValidation.error! };
+      }
+    } else {
+      // Game ended or other phase - don't allow any joins
+      return { success: false, error: 'GAME_IN_PROGRESS' };
+    }
+
+    // Check if name is taken by a connected player (for normal joining)
     const connectedPlayerWithName = Object.values(game.players).find(p => 
       p.name.toLowerCase() === playerName.toLowerCase() && p.connected
     );
@@ -569,7 +693,8 @@ export class GameManager {
       return { success: false, error: 'NAME_TAKEN' };
     }
 
-    // Normal join logic
+    // Normal join logic (we only reach here in lobby phase)
+
     const playerIds = Object.keys(game.players);
     if (playerIds.length >= game.playerCount) return { success: false, error: 'GAME_FULL' };
 
@@ -591,7 +716,144 @@ export class GameManager {
     game.players[playerId] = player;
     this.playerToGame.set(playerId, roomCode.toUpperCase());
 
+    // Check if this player should become host (e.g., if they're the original host rejoining)
+    this.checkAndAssignHost(game, playerId);
+
     return { success: true, game, playerId, isReconnection: false };
+  }
+
+  private findPreviousPlayer(game: GameState, playerName: string): { player: Player; leftAt: number; originalId: string } | null {
+    if (!game.previousPlayers) return null;
+    
+    const previousPlayerData = game.previousPlayers[playerName.toLowerCase()];
+    if (!previousPlayerData) return null;
+    
+    console.log(`[FIND PREVIOUS] Found previous player ${playerName} in game ${game.roomCode} - left at ${new Date(previousPlayerData.leftAt).toISOString()}`);
+    return previousPlayerData;
+  }
+
+  private getTimerStateForReconnection(game: GameState): { room0Timer: number | null; room1Timer: number | null } {
+    // Only return timer state during playing phase
+    if (game.phase !== 'playing') {
+      return { room0Timer: null, room1Timer: null };
+    }
+
+    const room0Timer = game.timers.room0LeaderCooldown ?? null;
+    const room1Timer = game.timers.room1LeaderCooldown ?? null;
+
+    console.log(`[TIMER STATE] Game ${game.roomCode} timer state: room0=${room0Timer}, room1=${room1Timer}`);
+    
+    return {
+      room0Timer,
+      room1Timer
+    };
+  }
+
+  private validateReconnection(game: GameState, playerName: string): { 
+    valid: boolean; 
+    error?: 'INVALID_PHASE' | 'NAME_TAKEN' | 'NO_PREVIOUS_PLAYER' | 'GAME_NOT_FOUND';
+    previousPlayerData?: { player: Player; leftAt: number; originalId: string };
+  } {
+    // Check if game is in valid phase for reconnection
+    if (game.phase !== 'setup' && game.phase !== 'playing') {
+      console.log(`[RECONNECTION VALIDATION] Player ${playerName} cannot reconnect - invalid phase: ${game.phase}`);
+      return { valid: false, error: 'INVALID_PHASE' };
+    }
+
+    // Check if name is currently taken by a connected player
+    const connectedPlayerWithName = Object.values(game.players).find(p => 
+      p.name.toLowerCase() === playerName.toLowerCase() && p.connected
+    );
+    if (connectedPlayerWithName) {
+      console.log(`[RECONNECTION VALIDATION] Player ${playerName} cannot reconnect - name taken by connected player`);
+      return { valid: false, error: 'NAME_TAKEN' };
+    }
+
+    // Check if previous player exists
+    const previousPlayerData = this.findPreviousPlayer(game, playerName);
+    if (!previousPlayerData) {
+      console.log(`[RECONNECTION VALIDATION] Player ${playerName} cannot reconnect - no previous player found`);
+      return { valid: false, error: 'NO_PREVIOUS_PLAYER' };
+    }
+
+    console.log(`[RECONNECTION VALIDATION] Player ${playerName} can reconnect to game ${game.roomCode}`);
+    return { valid: true, previousPlayerData };
+  }
+
+  private restorePlayerState(
+    game: GameState, 
+    newPlayerId: string, 
+    socketId: string, 
+    previousPlayerData: { player: Player; leftAt: number; originalId: string }
+  ): Player {
+    const { player: previousPlayer, originalId } = previousPlayerData;
+    
+    // Create new player with restored state
+    const restoredPlayer: Player = {
+      ...previousPlayer, // Copy all previous state
+      id: newPlayerId, // New ID for this session
+      socketId, // New socket ID
+      connected: true, // Mark as connected
+    };
+
+    // Add restored player to game
+    game.players[newPlayerId] = restoredPlayer;
+    this.playerToGame.set(newPlayerId, game.roomCode);
+
+    // Update room player lists if game is in playing phase
+    if (game.phase === 'playing' && previousPlayer.currentRoom !== undefined) {
+      const roomIndex = previousPlayer.currentRoom;
+      
+      // Remove old player ID from room if it exists
+      game.rooms[roomIndex].players = game.rooms[roomIndex].players.filter(id => id !== originalId);
+      
+      // Add new player ID to room
+      if (!game.rooms[roomIndex].players.includes(newPlayerId)) {
+        game.rooms[roomIndex].players.push(newPlayerId);
+      }
+
+      // Restore leader status if they were the leader
+      if (previousPlayer.isLeader) {
+        game.rooms[roomIndex].leaderId = newPlayerId;
+        game.rooms[roomIndex].leaderElectedAt = Date.now();
+      }
+    }
+
+    // Remove from previousPlayers collection
+    if (game.previousPlayers) {
+      delete game.previousPlayers[previousPlayer.name.toLowerCase()];
+    }
+
+    console.log(`[PLAYER RESTORED] ${previousPlayer.name} reconnected to game ${game.roomCode} with full state restoration`);
+    console.log(`[PLAYER RESTORED] Role: ${previousPlayer.role?.type}, Team: ${previousPlayer.role?.team}, Room: ${previousPlayer.currentRoom}, Leader: ${previousPlayer.isLeader}`);
+    
+    return restoredPlayer;
+  }
+
+  private checkAndAssignHost(game: GameState, playerId: string): boolean {
+    const player = game.players[playerId];
+    if (!player) return false;
+
+    // Check if there's currently no host
+    const currentHost = Object.values(game.players).find(p => p.isHost);
+    const hasNoHost = !currentHost;
+    
+    // Check if this player is the original host
+    const isOriginalHost = game.originalHostId === playerId;
+    
+    // Assign host if there's no current host OR if this is the original host returning
+    if (hasNoHost || isOriginalHost) {
+      // Clear any existing host first (in case original host is returning)
+      Object.values(game.players).forEach(p => p.isHost = false);
+      
+      // Make this player the host
+      player.isHost = true;
+      
+      console.log(`[HOST ASSIGNMENT] ${player.name} is now host (originalHost: ${isOriginalHost}, noHost: ${hasNoHost})`);
+      return true;
+    }
+    
+    return false;
   }
 
   private generateUniqueRoomCode(): string {

@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import clsx from 'clsx';
+import ParticleSystem from './ParticleSystem';
 
 // Import images to ensure they're bundled correctly
 import throneImg from '/backgrounds/throne.png';
@@ -11,6 +12,8 @@ interface MedievalBackgroundProps {
   variant?: 'castle-hall' | 'throne-room' | 'chamber' | 'battlements';
   children: ReactNode;
   particles?: boolean;
+  particleType?: 'ambient' | 'medieval-embers' | 'magic';
+  particleIntensity?: 'low' | 'medium' | 'high';
   className?: string;
 }
 
@@ -18,6 +21,8 @@ export default function MedievalBackground({
   variant = 'castle-hall',
   children,
   particles = false,
+  particleType = 'ambient',
+  particleIntensity = 'medium',
   className
 }: MedievalBackgroundProps) {
   const getBackgroundImage = () => {
@@ -85,25 +90,35 @@ export default function MedievalBackground({
         style={{ zIndex: 3 }}
       />
 
-      {/* Floating particles */}
+      {/* Enhanced particle system */}
       {particles && (
+        <ParticleSystem
+          type={particleType}
+          intensity={particleIntensity}
+          enabled={particles}
+          className="absolute inset-0"
+        />
+      )}
+      
+      {/* Legacy fallback particles for compatibility */}
+      {particles && particleType === 'ambient' && (
         <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 4 }}>
-          {[...Array(8)].map((_, i) => (
+          {[...Array(4)].map((_, i) => (
             <div
               key={i}
               className={clsx(
                 'absolute rounded-full',
                 {
-                  'w-1 h-1 bg-medieval-flame-orange animate-ember-float opacity-60': variant === 'castle-hall' || variant === 'chamber',
-                  'w-2 h-2 bg-medieval-metal-gold animate-ember-float opacity-40': variant === 'throne-room',
-                  'w-1 h-1 bg-medieval-stone-light animate-ember-float opacity-30': variant === 'battlements',
+                  'w-1 h-1 bg-medieval-flame-orange animate-ember-float opacity-30': variant === 'castle-hall' || variant === 'chamber',
+                  'w-2 h-2 bg-medieval-metal-gold animate-ember-float opacity-20': variant === 'throne-room',
+                  'w-1 h-1 bg-medieval-stone-light animate-ember-float opacity-15': variant === 'battlements',
                 }
               )}
               style={{
-                left: `${10 + i * 10}%`,
-                top: `${20 + (i % 3) * 30}%`,
-                animationDelay: `${i * 0.8}s`,
-                animationDuration: `${4 + i * 0.5}s`,
+                left: `${15 + i * 20}%`,
+                top: `${25 + (i % 2) * 40}%`,
+                animationDelay: `${i * 1.2}s`,
+                animationDuration: `${5 + i * 0.8}s`,
               }}
             />
           ))}

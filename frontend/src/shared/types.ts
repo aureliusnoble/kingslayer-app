@@ -49,6 +49,13 @@ export interface GameState {
   playerCount: number;
   players: Record<string, Player>;
   rooms: [RoomState, RoomState];
+  originalHostId: string; // ID of the player who created the game
+  leftPlayers?: Record<string, { name: string; leftAt: number }>; // Track players who left this session
+  previousPlayers?: Record<string, { // Track complete player state for reconnection (keyed by lowercase name)
+    player: Player; // Complete player state when they left
+    leftAt: number; // Timestamp when they left
+    originalId: string; // Original player ID for room management
+  }>;
   timers: {
     room0LeaderCooldown?: number;
     room1LeaderCooldown?: number;
